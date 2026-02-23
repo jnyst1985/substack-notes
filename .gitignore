@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+extension/dist/
+web/.next/
+web/out/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+web/.env
+web/.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local MCP config (contains project-specific settings)
+.mcp.json
