@@ -1,7 +1,6 @@
 import type { ScheduledNote } from "./types";
 
-// This will be set after deployment - for now use localhost
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://substack-notes-xvxq.vercel.app";
 
 // Get or create a persistent user ID
 async function getUserId(): Promise<string> {
