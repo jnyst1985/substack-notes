@@ -11,12 +11,21 @@ Chrome Extension                    Backend (Vercel)
       |                                   |
   Write note                       Next.js API routes
   Pick datetime                          |
-  Capture session cookie           Vercel Cron (daily 10:10PM MYT)
+  Capture session cookie           Supabase (storage)
       |                                   |
-  Send to backend                  Query pending notes
-      |                                   |
-  Supabase (storage)  <-------->   Post to Substack API
+  Send to backend -----------------> Store notes
+      |
+  On popup open:                   Cron job (backup only - blocked by Cloudflare)
+  Check for due notes                    |
+      |                            Query pending notes
+  POST directly to Substack        (Usually fails due to Cloudflare)
+  (using real browser session)
+      |
+  Mark as delivered in backend
 ```
+
+**Note**: Server-side posting via Vercel cron is blocked by Cloudflare (see Bug #6).
+The extension now handles posting directly using the user's real browser session.
 
 ## Tech Stack
 
@@ -63,10 +72,13 @@ substack-scheduler/
 
 | File | Purpose |
 |------|---------|
-| `extension/src/utils/backend-api.ts` | API client, contains `API_BASE` URL |
+| `extension/src/utils/backend-api.ts` | API client, `processDueNotes()` for extension posting |
+| `extension/src/popup/App.tsx` | Main UI, calls `processDueNotes()` on load |
 | `web/src/app/api/auth/route.ts` | Receives + encrypts session token |
 | `web/src/app/api/notes/route.ts` | CRUD endpoints with CORS headers |
-| `web/src/app/api/cron/post/route.ts` | Cron job that posts to Substack |
+| `web/src/app/api/notes/deliver/route.ts` | Mark note as delivered (called by extension) |
+| `web/src/app/api/notes/fail/route.ts` | Mark note as failed (called by extension) |
+| `web/src/app/api/cron/post/route.ts` | Cron job (backup, usually blocked by Cloudflare) |
 | `web/src/lib/crypto.ts` | Encryption/decryption helpers |
 | `web/vercel.json` | Cron schedule (`10 14 * * *` = 10:10 PM MYT daily) |
 
@@ -149,6 +161,28 @@ git commit --amend --reset-author --no-edit
 git push --force
 ```
 
+### 6. Cloudflare blocking Vercel cron requests (Feb 2026)
+**Problem**: Substack added Cloudflare protection that blocks POST requests from Vercel serverless functions. The cron job returns HTTP 403 with a Cloudflare challenge page instead of posting notes.
+
+**Root cause**: Cloudflare detects datacenter IPs (like Vercel's) and blocks automated requests. Adding browser-like headers (User-Agent, Sec-* headers, etc.) did not bypass the protection - Cloudflare uses deeper fingerprinting (TLS fingerprint, IP reputation).
+
+**Fix**: Extension-based posting. The extension now:
+1. Checks for due notes (pending + scheduled_time in past) when popup opens
+2. Posts directly to Substack using `credentials: "include"` (real browser session)
+3. Calls `/api/notes/deliver` or `/api/notes/fail` to update backend status
+
+**New endpoints added**:
+- `POST /api/notes/deliver` - Mark note as delivered
+- `POST /api/notes/fail` - Mark note as failed with error message
+
+**New extension function**: `processDueNotes()` in `backend-api.ts`
+
+**Limitation**: Notes only post when extension popup is opened. Browser must be running.
+
+**Alternatives considered but not implemented**:
+- Proxy service (Bright Data, etc.) - monthly cost, reliable
+- Chrome alarms API - service workers killed after 30s, unreliable
+
 ## Substack API Details
 
 **Endpoint**: `POST https://substack.com/api/v1/comment/feed`
@@ -179,11 +213,18 @@ Content-Type: application/json
 
 - Extension deployed and working
 - Backend deployed at `https://substack-notes-xvxq.vercel.app`
-- Cron job runs daily at 14:10 UTC (10:10 PM MYT)
+- Cron job runs daily at 14:10 UTC (10:10 PM MYT) but **blocked by Cloudflare**
 - Session tokens encrypted and stored in Supabase
-- Notes scheduled from extension are posted automatically
+- **Extension-based posting**: Notes post when extension popup is opened (bypasses Cloudflare)
 - **Edit functionality**: Users can edit pending notes (content + scheduled time)
 - **UI**: Redesigned with shadcn-style components (Feb 2026)
+
+### How Posting Works Now
+1. User schedules a note via extension → stored in Supabase with status `pending`
+2. When user opens extension popup → `processDueNotes()` runs
+3. Checks for notes where `scheduled_time <= now` and `status = 'pending'`
+4. Posts each due note directly to Substack API using browser session
+5. Updates backend: `delivered` on success, `failed` on error
 
 ## Edit Notes Feature
 
@@ -226,6 +267,8 @@ The extension UI uses a shadcn-inspired design created in Pencil (`.pen` file).
 
 ## Future Improvements
 
-- More frequent posting (requires Vercel Pro or external cron service)
+- **Background posting**: Use Chrome alarms + persistent background to post without popup open
+- **Proxy service**: Route server requests through residential IPs to bypass Cloudflare
+- **Mobile app**: React Native app that can post in background
 - Image/media attachments
 - Multiple Substack accounts
