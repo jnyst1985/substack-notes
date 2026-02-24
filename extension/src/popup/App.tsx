@@ -4,6 +4,7 @@ import {
   syncSessionToken,
   getNotesFromBackend,
   createNoteInBackend,
+  updateNoteInBackend,
   deleteNoteFromBackend,
   isBackendSynced,
   setBackendSynced,
@@ -18,6 +19,8 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [cloudSynced, setCloudSynced] = useState<boolean | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   useEffect(() => {
     init();
@@ -91,6 +94,59 @@ function App() {
     }
   }
 
+  function handleEdit(note: ScheduledNote) {
+    setEditingNoteId(note.id);
+    setContent(note.content);
+    // Convert ISO string to datetime-local format
+    const date = new Date(note.scheduledTime);
+    const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setScheduledTime(localDateTime);
+    setEditError(null);
+  }
+
+  function handleCancelEdit() {
+    setEditingNoteId(null);
+    setContent("");
+    setScheduledTime("");
+    setEditError(null);
+  }
+
+  async function handleSaveEdit() {
+    if (!editingNoteId || !content.trim() || !scheduledTime) return;
+
+    setIsSubmitting(true);
+    setEditError(null);
+
+    const result = await updateNoteInBackend(
+      editingNoteId,
+      content.trim(),
+      new Date(scheduledTime).toISOString()
+    );
+
+    if (result.note) {
+      setEditingNoteId(null);
+      setContent("");
+      setScheduledTime("");
+      await loadNotes();
+    } else if (result.nextCronTime) {
+      const nextCron = new Date(result.nextCronTime);
+      setEditError(
+        `Please schedule after ${nextCron.toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        })}`
+      );
+    } else {
+      setEditError(result.error || "Failed to update note");
+    }
+
+    setIsSubmitting(false);
+  }
+
   function formatDate(isoString: string): string {
     const date = new Date(isoString);
     return date.toLocaleString(undefined, {
@@ -162,7 +218,9 @@ function App() {
   return (
     <div className="p-4 flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">Schedule a Note</h1>
+        <h1 className="text-lg font-semibold text-gray-900">
+          {editingNoteId ? "Edit Note" : "Schedule a Note"}
+        </h1>
         <span className="text-xs text-green-600 flex items-center gap-1">
           <span className="w-2 h-2 bg-green-500 rounded-full"></span>
           Cloud
@@ -184,14 +242,37 @@ function App() {
           min={getMinDateTime()}
           className="flex-1 p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
         />
-        <button
-          onClick={handleSchedule}
-          disabled={!content.trim() || !scheduledTime || isSubmitting}
-          className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? "..." : "Schedule"}
-        </button>
+        {editingNoteId ? (
+          <>
+            <button
+              onClick={handleCancelEdit}
+              disabled={isSubmitting}
+              className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={!content.trim() || !scheduledTime || isSubmitting}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "..." : "Save"}
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={handleSchedule}
+            disabled={!content.trim() || !scheduledTime || isSubmitting}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? "..." : "Schedule"}
+          </button>
+        )}
       </div>
+
+      {editError && (
+        <p className="text-sm text-red-600">{editError}</p>
+      )}
 
       {pendingNotes.length > 0 && (
         <div className="border-t pt-4">
@@ -202,7 +283,9 @@ function App() {
             {pendingNotes.map((note) => (
               <li
                 key={note.id}
-                className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg"
+                className={`flex items-start gap-2 p-2 rounded-lg ${
+                  editingNoteId === note.id ? "bg-orange-50 border border-orange-200" : "bg-gray-50"
+                }`}
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-gray-900 truncate">
@@ -213,8 +296,17 @@ function App() {
                   </p>
                 </div>
                 <button
+                  onClick={() => handleEdit(note)}
+                  disabled={editingNoteId !== null}
+                  className="text-gray-400 hover:text-orange-500 text-sm p-1 disabled:opacity-30"
+                  title="Edit"
+                >
+                  ✎
+                </button>
+                <button
                   onClick={() => handleDelete(note.id)}
-                  className="text-gray-400 hover:text-red-500 text-sm p-1"
+                  disabled={editingNoteId !== null}
+                  className="text-gray-400 hover:text-red-500 text-sm p-1 disabled:opacity-30"
                   title="Delete"
                 >
                   x

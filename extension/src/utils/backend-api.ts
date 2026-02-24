@@ -119,6 +119,51 @@ export async function createNoteInBackend(
   }
 }
 
+export async function updateNoteInBackend(
+  noteId: string,
+  content: string,
+  scheduledTime: string
+): Promise<{ note: ScheduledNote | null; error?: string; nextCronTime?: string }> {
+  try {
+    const userId = await getUserId();
+
+    const response = await fetch(`${API_BASE}/api/notes`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId,
+      },
+      body: JSON.stringify({ id: noteId, content, scheduledTime }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        note: null,
+        error: data.error || "Failed to update note",
+        nextCronTime: data.nextCronTime,
+      };
+    }
+
+    const note = data.note;
+    return {
+      note: {
+        id: note.id,
+        content: note.content,
+        scheduledTime: note.scheduled_time,
+        createdAt: note.created_at,
+        status: note.status,
+        error: note.error,
+        deliveredAt: note.delivered_at,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to update note in backend:", error);
+    return { note: null, error: "Network error" };
+  }
+}
+
 export async function deleteNoteFromBackend(noteId: string): Promise<boolean> {
   try {
     const userId = await getUserId();
