@@ -4,7 +4,7 @@ import { supabase, ScheduledNote } from "@/lib/supabase";
 function getNextCronTime(): Date {
   const now = new Date();
   const next = new Date(now);
-  next.setUTCHours(9, 0, 0, 0);
+  next.setUTCHours(14, 10, 0, 0);
   if (next <= now) {
     next.setUTCDate(next.getUTCDate() + 1);
   }

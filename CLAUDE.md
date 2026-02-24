@@ -11,7 +11,7 @@ Chrome Extension                    Backend (Vercel)
       |                                   |
   Write note                       Next.js API routes
   Pick datetime                          |
-  Capture session cookie           Vercel Cron (daily 9AM UTC)
+  Capture session cookie           Vercel Cron (daily 10:10PM MYT)
       |                                   |
   Send to backend                  Query pending notes
       |                                   |
@@ -23,7 +23,7 @@ Chrome Extension                    Backend (Vercel)
 - **Extension**: Chrome Manifest V3, React, Vite, TypeScript, Tailwind
 - **Backend**: Next.js (App Router) on Vercel
 - **Database**: Supabase (PostgreSQL)
-- **Scheduling**: Vercel Cron (daily at 9 AM UTC / 5 PM MYT)
+- **Scheduling**: Vercel Cron (daily at 14:10 UTC / 10:10 PM MYT)
 - **Auth**: Encrypted session cookie storage (AES-256-GCM)
 
 ## Project Structure
@@ -68,7 +68,7 @@ substack-scheduler/
 | `web/src/app/api/notes/route.ts` | CRUD endpoints with CORS headers |
 | `web/src/app/api/cron/post/route.ts` | Cron job that posts to Substack |
 | `web/src/lib/crypto.ts` | Encryption/decryption helpers |
-| `web/vercel.json` | Cron schedule (`0 9 * * *` = 9 AM UTC daily) |
+| `web/vercel.json` | Cron schedule (`10 14 * * *` = 10:10 PM MYT daily) |
 
 ## Database Schema (Supabase)
 
@@ -124,7 +124,7 @@ CRON_SECRET=<random string>
 
 ### 3. Vercel cron limitation
 **Problem**: Hobby tier only allows daily cron jobs, not every 5 minutes.
-**Fix**: Changed schedule from `*/5 * * * *` to `0 9 * * *` (daily at 9 AM UTC).
+**Fix**: Changed schedule from `*/5 * * * *` to `10 14 * * *` (daily at 10:10 PM MYT).
 
 ### 4. CORS error from Chrome extension
 **Problem**: Extension blocked by CORS when calling `/api/auth`.
@@ -179,7 +179,7 @@ Content-Type: application/json
 
 - Extension deployed and working
 - Backend deployed at `https://substack-notes-xvxq.vercel.app`
-- Cron job runs daily at 9 AM UTC (5 PM MYT)
+- Cron job runs daily at 14:10 UTC (10:10 PM MYT)
 - Session tokens encrypted and stored in Supabase
 - Notes scheduled from extension are posted automatically
 - **Edit functionality**: Users can edit pending notes (content + scheduled time)
@@ -193,7 +193,7 @@ Added in Feb 2026. Key implementation details:
 `PUT /api/notes` - Updates a pending note's content and/or scheduled time.
 
 ### Cron Timing Validation
-Because the cron only runs once daily at 9 AM UTC, edits must account for timing:
+Because the cron only runs once daily at 10:10 PM MYT (14:10 UTC), edits must account for timing:
 - `getNextCronTime()` helper calculates when the next cron will run
 - Backend rejects edits where `scheduledTime <= nextCronTime`
 - Frontend shows error: "Please schedule after [next cron time]"
