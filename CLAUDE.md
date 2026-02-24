@@ -182,10 +182,50 @@ Content-Type: application/json
 - Cron job runs daily at 9 AM UTC (5 PM MYT)
 - Session tokens encrypted and stored in Supabase
 - Notes scheduled from extension are posted automatically
+- **Edit functionality**: Users can edit pending notes (content + scheduled time)
+- **UI**: Redesigned with shadcn-style components (Feb 2026)
+
+## Edit Notes Feature
+
+Added in Feb 2026. Key implementation details:
+
+### API Endpoint
+`PUT /api/notes` - Updates a pending note's content and/or scheduled time.
+
+### Cron Timing Validation
+Because the cron only runs once daily at 9 AM UTC, edits must account for timing:
+- `getNextCronTime()` helper calculates when the next cron will run
+- Backend rejects edits where `scheduledTime <= nextCronTime`
+- Frontend shows error: "Please schedule after [next cron time]"
+
+This prevents users from editing a note to a time that's already passed for today's cron window.
+
+### Files Modified
+- `web/src/app/api/notes/route.ts` - Added PUT handler with validation
+- `extension/src/utils/backend-api.ts` - Added `updateNoteInBackend()`
+- `extension/src/popup/App.tsx` - Added edit mode UI
+
+## UI Design
+
+The extension UI uses a shadcn-inspired design created in Pencil (`.pen` file).
+
+**Design file**: `/Users/jonathanjulien/Documents/Substack Notes Scheduler.pen`
+
+**Key screens**:
+- "Schedule a Note" - Main view with textarea, date picker, note list
+- "Edit Note" - Same layout but with Cancel/Save buttons, active note highlighted
+
+**Color palette**:
+- Background: `#fafafa`
+- Borders: `#e5e5e5`
+- Primary text: `#0a0a0a`
+- Secondary text: `#737373`
+- Primary button: `#171717` (black)
+- Success/Save: `#22c55e` (green)
+- Cloud status: `#22c55e` (green)
 
 ## Future Improvements
 
 - More frequent posting (requires Vercel Pro or external cron service)
-- Edit scheduled notes
 - Image/media attachments
 - Multiple Substack accounts
