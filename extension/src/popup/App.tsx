@@ -8,6 +8,7 @@ import {
   deleteNoteFromBackend,
   isBackendSynced,
   setBackendSynced,
+  processDueNotes,
 } from "../utils/backend-api";
 import type { ScheduledNote } from "../utils/types";
 
@@ -93,6 +94,16 @@ function App() {
       setCloudSynced(synced);
 
       if (synced) {
+        // Process any due notes first (post them from extension)
+        const result = await processDueNotes();
+        if (result.posted > 0) {
+          console.log(`Posted ${result.posted} due note(s) from extension`);
+        }
+        if (result.failed > 0) {
+          console.error(`Failed to post ${result.failed} note(s):`, result.errors);
+        }
+
+        // Then load all notes to display
         await loadNotes();
       }
     }

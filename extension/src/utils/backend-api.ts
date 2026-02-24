@@ -1,6 +1,19 @@
-import type { ScheduledNote } from "./types";
+import type { ScheduledNote, ProseMirrorDoc } from "./types";
 
 const API_BASE = "https://substack-notes-xvxq.vercel.app";
+
+// Convert text to ProseMirror format for Substack API
+function textToProseMirror(text: string): ProseMirrorDoc {
+  const paragraphs = text.split(/\n\n+/).filter(Boolean);
+  return {
+    type: "doc",
+    attrs: { schemaVersion: "v1" },
+    content: paragraphs.map((p) => ({
+      type: "paragraph",
+      content: [{ type: "text", text: p.trim() }],
+    })),
+  };
+}
 
 // Get or create a persistent user ID
 async function getUserId(): Promise<string> {
@@ -187,4 +200,131 @@ export async function isBackendSynced(): Promise<boolean> {
 
 export async function setBackendSynced(synced: boolean): Promise<void> {
   await chrome.storage.local.set({ backendSynced: synced });
+}
+
+// Mark a note as delivered in the backend (after posting from extension)
+export async function markNoteDeliveredInBackend(
+  noteId: string
+): Promise<boolean> {
+  try {
+    const userId = await getUserId();
+
+    const response = await fetch(`${API_BASE}/api/notes/deliver`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId,
+      },
+      body: JSON.stringify({ id: noteId }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error("Failed to mark note delivered:", error);
+    return false;
+  }
+}
+
+// Mark a note as failed in the backend
+export async function markNoteFailedInBackend(
+  noteId: string,
+  error: string
+): Promise<boolean> {
+  try {
+    const userId = await getUserId();
+
+    const response = await fetch(`${API_BASE}/api/notes/fail`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": userId,
+      },
+      body: JSON.stringify({ id: noteId, error }),
+    });
+
+    return response.ok;
+  } catch (err) {
+    console.error("Failed to mark note failed:", err);
+    return false;
+  }
+}
+
+// Post a note directly to Substack from the extension
+async function postNoteToSubstack(
+  content: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch("https://substack.com/api/v1/comment/feed", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bodyJson: textToProseMirror(content),
+        tabId: "for-you",
+        surface: "feed",
+        replyMinimumRole: "everyone",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+// Check for due notes and post them from the extension
+// Returns the number of notes posted
+export async function processDueNotes(): Promise<{
+  posted: number;
+  failed: number;
+  errors: string[];
+}> {
+  const result = { posted: 0, failed: 0, errors: [] as string[] };
+
+  try {
+    const notes = await getNotesFromBackend();
+    const now = new Date();
+
+    // Find pending notes that are due (scheduled time is in the past)
+    const dueNotes = notes.filter(
+      (note) =>
+        note.status === "pending" && new Date(note.scheduledTime) <= now
+    );
+
+    for (const note of dueNotes) {
+      console.log(`Posting due note: ${note.id}`);
+
+      const postResult = await postNoteToSubstack(note.content);
+
+      if (postResult.success) {
+        await markNoteDeliveredInBackend(note.id);
+        result.posted++;
+        console.log(`Successfully posted note: ${note.id}`);
+      } else {
+        const errorMsg = postResult.error || "Unknown error";
+        await markNoteFailedInBackend(note.id, errorMsg);
+        result.failed++;
+        result.errors.push(`Note ${note.id}: ${errorMsg}`);
+        console.error(`Failed to post note ${note.id}:`, errorMsg);
+      }
+
+      // Small delay between posts to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  } catch (error) {
+    console.error("Error processing due notes:", error);
+    result.errors.push(
+      error instanceof Error ? error.message : "Unknown error"
+    );
+  }
+
+  return result;
 }
