@@ -40,7 +40,9 @@ export function ComposeForm({
   function getMinDateTime(): string {
     const now = new Date();
     now.setMinutes(now.getMinutes() + 5);
-    return now.toISOString().slice(0, 16);
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
   }
 
   async function handleSubmit(e: React.FormEvent) {

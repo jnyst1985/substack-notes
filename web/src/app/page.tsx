@@ -37,12 +37,12 @@ export default function DashboardPage() {
   }
 
   async function handleRetry(id: string) {
-    await fetch("/api/notes", {
-      method: "PUT",
+    const res = await fetch("/api/notes", {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status: "pending" }),
+      body: JSON.stringify({ id }),
     });
-    loadNotes();
+    if (res.ok) loadNotes();
   }
 
   function handleEdit(note: ScheduledNote) {

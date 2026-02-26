@@ -30,7 +30,7 @@ export function SessionStatus() {
     );
   }
 
-  const isVerified = session.lastVerifiedAt !== null;
+  const isVerified = !!session.lastVerifiedAt;
 
   return (
     <Link href="/settings">

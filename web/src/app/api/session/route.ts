@@ -2,6 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { encrypt } from "@/lib/crypto";
 import { NextRequest, NextResponse } from "next/server";
 
+async function parseJsonBody(request: NextRequest) {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+}
+
 // GET /api/session — check if Substack session exists and its status
 export async function GET() {
   const supabase = await createClient();
@@ -37,7 +45,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = await parseJsonBody(request);
+  if (!body) {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { token } = body;
 
   if (!token?.trim()) {
