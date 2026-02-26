@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ComposeForm } from "@/components/compose-form";
 import { NotesList } from "@/components/notes-list";
+import { CalendarView } from "@/components/calendar-view";
 import { SessionStatus } from "@/components/session-status";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ScheduledNote } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -89,13 +91,24 @@ export default function DashboardPage() {
           Loading notes...
         </p>
       ) : (
-        <NotesList
-          notes={notes}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onRetry={handleRetry}
-          editingNoteId={editingNote?.id ?? null}
-        />
+        <Tabs defaultValue="list">
+          <TabsList className="mb-4">
+            <TabsTrigger value="list">List</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          </TabsList>
+          <TabsContent value="list">
+            <NotesList
+              notes={notes}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onRetry={handleRetry}
+              editingNoteId={editingNote?.id ?? null}
+            />
+          </TabsContent>
+          <TabsContent value="calendar">
+            <CalendarView notes={notes} onEdit={handleEdit} />
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );
