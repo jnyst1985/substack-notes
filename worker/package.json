@@ -15,10 +15,10 @@
     "puppeteer": "^24.37.5",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@types/node": "^25.3.1"
+    "@types/node": "^25.3.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
