@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { RichEditor, isEditorEmpty } from "@/components/rich-editor";
+import type { JSONContent } from "@tiptap/react";
+
+const EMPTY_DOC: JSONContent = {
+  type: "doc",
+  content: [{ type: "paragraph" }],
+};
 
 interface ComposeFormProps {
   onNoteCreated: () => void;
@@ -18,13 +24,39 @@ interface ComposeFormProps {
   onNoteUpdated?: () => void;
 }
 
+/** Try to parse stored content as ProseMirror JSON, fall back to plain text conversion */
+function parseStoredContent(raw: string): JSONContent {
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.type === "doc") return parsed;
+  } catch {
+    // plain text — convert to minimal ProseMirror doc
+  }
+  const paragraphs = raw.split(/\n\n+/).filter(Boolean);
+  return {
+    type: "doc",
+    content: paragraphs.length > 0
+      ? paragraphs.map((p) => ({
+          type: "paragraph" as const,
+          content: [{ type: "text" as const, text: p.trim() }],
+        }))
+      : [{ type: "paragraph" as const }],
+  };
+}
+
 export function ComposeForm({
   onNoteCreated,
   editingNote,
   onCancelEdit,
   onNoteUpdated,
 }: ComposeFormProps) {
-  const [content, setContent] = useState(editingNote?.content ?? "");
+  // Parse initial content for the editor
+  const initialContent = useMemo(
+    () => (editingNote ? parseStoredContent(editingNote.content) : EMPTY_DOC),
+    [editingNote]
+  );
+
+  const [content, setContent] = useState<JSONContent>(initialContent);
   const [scheduledTime, setScheduledTime] = useState(() => {
     if (!editingNote?.scheduled_time) return "";
     const date = new Date(editingNote.scheduled_time);
@@ -36,6 +68,7 @@ export function ComposeForm({
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = !!editingNote;
+  const isEmpty = isEditorEmpty(content);
 
   function getMinDateTime(): string {
     const now = new Date();
@@ -47,11 +80,13 @@ export function ComposeForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!content.trim() || !scheduledTime) return;
+    if (isEmpty || !scheduledTime) return;
 
     setIsSubmitting(true);
     setError(null);
 
+    // Store ProseMirror JSON as a string in the content field
+    const contentStr = JSON.stringify(content);
     const scheduledTimeISO = new Date(scheduledTime).toISOString();
 
     if (isEditing) {
@@ -60,7 +95,7 @@ export function ComposeForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: editingNote.id,
-          content: content.trim(),
+          content: contentStr,
           scheduledTime: scheduledTimeISO,
         }),
       });
@@ -78,7 +113,7 @@ export function ComposeForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: content.trim(),
+          content: contentStr,
           scheduledTime: scheduledTimeISO,
         }),
       });
@@ -90,7 +125,7 @@ export function ComposeForm({
         return;
       }
 
-      setContent("");
+      setContent(EMPTY_DOC);
       setScheduledTime("");
       onNoteCreated();
     }
@@ -103,15 +138,13 @@ export function ComposeForm({
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="content">
+            <Label>
               {isEditing ? "Edit note" : "Write your note"}
             </Label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
+            <RichEditor
+              content={initialContent}
+              onChange={setContent}
               placeholder="What's on your mind?"
-              className="min-h-[120px] resize-none"
             />
           </div>
 
@@ -136,7 +169,7 @@ export function ComposeForm({
             )}
             <Button
               type="submit"
-              disabled={!content.trim() || !scheduledTime || isSubmitting}
+              disabled={isEmpty || !scheduledTime || isSubmitting}
             >
               {isSubmitting
                 ? "..."

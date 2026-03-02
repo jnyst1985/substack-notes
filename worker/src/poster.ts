@@ -12,6 +12,7 @@ interface PostResult {
   error?: string;
 }
 
+/** Convert plain text to ProseMirror JSON (for backward compat with old notes) */
 function textToProseMirrorJson(text: string): string {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
   const doc = {
@@ -23,6 +24,25 @@ function textToProseMirrorJson(text: string): string {
     })),
   };
   return JSON.stringify(doc);
+}
+
+/**
+ * Get ProseMirror JSON string ready for Substack API.
+ * New notes store ProseMirror JSON directly; old notes store plain text.
+ */
+function contentToProseMirrorJson(content: string): string {
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed.type === "doc") {
+      // Already ProseMirror JSON — ensure schemaVersion is set
+      if (!parsed.attrs) parsed.attrs = {};
+      parsed.attrs.schemaVersion = "v1";
+      return JSON.stringify(parsed);
+    }
+  } catch {
+    // Not JSON — treat as plain text
+  }
+  return textToProseMirrorJson(content);
 }
 
 export async function postNotesWithPuppeteer(
@@ -79,7 +99,7 @@ export async function postNotesWithPuppeteer(
     for (const note of notes) {
       console.log(`Posting note ${note.id}...`);
 
-      const bodyJson = textToProseMirrorJson(note.content);
+      const bodyJson = contentToProseMirrorJson(note.content);
 
       const postResult = await page.evaluate(
         async (apiUrl: string, bodyJsonStr: string) => {

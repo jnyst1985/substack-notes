@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
+import { extractPlainText } from "@/components/rich-editor";
 import type { ScheduledNote } from "@/lib/types";
 
 interface CalendarViewProps {
@@ -76,7 +77,7 @@ export function CalendarView({ notes, onEdit }: CalendarViewProps) {
                   {formatTime(note.scheduled_time)}
                 </span>
                 <span className="text-sm flex-1 truncate">
-                  {note.content.split("\n")[0]}
+                  {extractPlainText(note.content).split("\n")[0]}
                 </span>
                 <Badge
                   variant={

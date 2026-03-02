@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { extractPlainText } from "@/components/rich-editor";
 import type { ScheduledNote } from "@/lib/types";
 
 interface NotesListProps {
@@ -58,7 +59,7 @@ export function NotesList({
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">
-                    {truncate(note.content.split("\n")[0], 60)}
+                    {truncate(extractPlainText(note.content).split("\n")[0], 60)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDate(note.scheduled_time)}
@@ -97,7 +98,7 @@ export function NotesList({
               <div key={note.id} className="flex items-center gap-3 py-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">
-                    {truncate(note.content.split("\n")[0], 50)}
+                    {truncate(extractPlainText(note.content).split("\n")[0], 50)}
                   </p>
                   <p className="text-xs text-destructive">{note.error}</p>
                 </div>
@@ -122,7 +123,7 @@ export function NotesList({
           <div className="flex flex-col gap-1">
             {delivered.slice(0, 5).map((note) => (
               <p key={note.id} className="text-xs text-muted-foreground">
-                {truncate(note.content.split("\n")[0], 50)} —{" "}
+                {truncate(extractPlainText(note.content).split("\n")[0], 50)} —{" "}
                 {formatDate(note.delivered_at!)}
               </p>
             ))}
