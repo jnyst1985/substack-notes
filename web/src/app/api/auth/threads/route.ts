@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const THREADS_AUTH_URL = "https://www.threads.com/oauth/authorize";
+const THREADS_AUTH_URL = "https://threads.net/oauth/authorize";
 const SCOPES = [
   "threads_basic",
   "threads_content_publish",
@@ -38,5 +38,8 @@ export async function GET() {
     `state=${encodeURIComponent(user.id)}`,
   ].join("&");
 
-  return NextResponse.redirect(`${THREADS_AUTH_URL}?${query}`);
+  const fullUrl = `${THREADS_AUTH_URL}?${query}`;
+  console.log("Threads OAuth redirect URL:", fullUrl);
+
+  return NextResponse.redirect(fullUrl);
 }
