@@ -29,3 +29,6 @@ npm-debug.log*
 
 # Local MCP config (contains project-specific settings)
 .mcp.json
+
+# Worktrees
+.worktrees/
