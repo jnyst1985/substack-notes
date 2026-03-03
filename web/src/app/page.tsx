@@ -51,10 +51,34 @@ export default function DashboardPage() {
     setConnectedPlatforms(platforms);
   }, []);
 
+  // Load Threads insights for inline stats in notes list
+  const loadInsights = useCallback(async () => {
+    const res = await fetch("/api/analytics/threads");
+    if (res.ok) {
+      const data = await res.json();
+      const map: Record<string, ThreadsInsight> = {};
+      for (const post of data.posts ?? []) {
+        map[post.noteId] = {
+          id: post.noteId,
+          note_id: post.noteId,
+          user_id: "",
+          views: post.views,
+          likes: post.likes,
+          replies: post.replies,
+          reposts: post.reposts,
+          quotes: post.quotes,
+          fetched_at: "",
+        };
+      }
+      setThreadsInsights(map);
+    }
+  }, []);
+
   useEffect(() => {
     loadNotes();
     loadPlatformStatus();
-  }, [loadNotes, loadPlatformStatus]);
+    loadInsights();
+  }, [loadNotes, loadPlatformStatus, loadInsights]);
 
   async function handleDelete(id: string) {
     const res = await fetch(`/api/notes?id=${id}`, { method: "DELETE" });
