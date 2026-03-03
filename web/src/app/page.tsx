@@ -9,12 +9,14 @@ import { CalendarView } from "@/components/calendar-view";
 import { SessionStatus } from "@/components/session-status";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { ScheduledNote } from "@/lib/types";
+import type { ScheduledNote, Platform, ThreadsInsight } from "@/lib/types";
 
 export default function DashboardPage() {
   const [notes, setNotes] = useState<ScheduledNote[]>([]);
   const [editingNote, setEditingNote] = useState<ScheduledNote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [connectedPlatforms, setConnectedPlatforms] = useState<Platform[]>([]);
+  const [threadsInsights, setThreadsInsights] = useState<Record<string, ThreadsInsight>>({});
   const router = useRouter();
   const supabase = createClient();
 
@@ -27,9 +29,32 @@ export default function DashboardPage() {
     setIsLoading(false);
   }, []);
 
+  // Load platform connection statuses
+  const loadPlatformStatus = useCallback(async () => {
+    const platforms: Platform[] = [];
+
+    const [sessionRes, threadsRes] = await Promise.all([
+      fetch("/api/session"),
+      fetch("/api/auth/threads/status"),
+    ]);
+
+    if (sessionRes.ok) {
+      const data = await sessionRes.json();
+      if (data.hasSession) platforms.push("substack");
+    }
+
+    if (threadsRes.ok) {
+      const data = await threadsRes.json();
+      if (data.connected) platforms.push("threads");
+    }
+
+    setConnectedPlatforms(platforms);
+  }, []);
+
   useEffect(() => {
     loadNotes();
-  }, [loadNotes]);
+    loadPlatformStatus();
+  }, [loadNotes, loadPlatformStatus]);
 
   async function handleDelete(id: string) {
     const res = await fetch(`/api/notes?id=${id}`, { method: "DELETE" });
@@ -67,9 +92,16 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-xl font-semibold">Substack Scheduler</h1>
+        <h1 className="text-xl font-semibold">PostQueue</h1>
         <div className="flex items-center gap-3">
           <SessionStatus />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/analytics")}
+          >
+            Analytics
+          </Button>
           <Button variant="ghost" size="sm" onClick={handleLogout}>
             Logout
           </Button>
@@ -83,6 +115,7 @@ export default function DashboardPage() {
           onNoteUpdated={handleNoteCreatedOrUpdated}
           editingNote={editingNote}
           onCancelEdit={handleCancelEdit}
+          connectedPlatforms={connectedPlatforms}
         />
       </div>
 
@@ -103,6 +136,7 @@ export default function DashboardPage() {
               onDelete={handleDelete}
               onRetry={handleRetry}
               editingNoteId={editingNote?.id ?? null}
+              threadsInsights={threadsInsights}
             />
           </TabsContent>
           <TabsContent value="calendar">

@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Substack Scheduler",
-  description: "Schedule your Substack Notes ahead of time",
+  title: "PostQueue",
+  description: "Schedule and cross-post to Substack and Threads",
 };
 
 export default function RootLayout({

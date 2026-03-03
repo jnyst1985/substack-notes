@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { extractPlainText } from "@/components/rich-editor";
+import { SubstackIcon } from "@/components/icons/substack-icon";
+import { ThreadsIcon } from "@/components/icons/threads-icon";
 import type { ScheduledNote } from "@/lib/types";
 
 interface CalendarViewProps {
@@ -73,6 +75,11 @@ export function CalendarView({ notes, onEdit }: CalendarViewProps) {
                 onClick={() => note.status === "pending" && onEdit(note)}
                 className="flex items-center gap-2 p-2 rounded-md border text-left hover:bg-muted transition-colors"
               >
+                {note.platform === "substack" ? (
+                  <SubstackIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                ) : (
+                  <ThreadsIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                )}
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {formatTime(note.scheduled_time)}
                 </span>

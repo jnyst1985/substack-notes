@@ -40,7 +40,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Substack Scheduler</CardTitle>
+          <CardTitle className="text-xl">PostQueue</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="flex flex-col gap-4">

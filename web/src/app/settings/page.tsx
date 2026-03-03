@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { SubstackIcon } from "@/components/icons/substack-icon";
+import { ThreadsIcon } from "@/components/icons/threads-icon";
 
 interface SessionInfo {
   hasSession: boolean;
@@ -21,18 +23,35 @@ interface SessionInfo {
   lastVerifiedAt?: string | null;
 }
 
+interface ThreadsStatus {
+  connected: boolean;
+  username?: string;
+  tokenExpiresAt?: string;
+}
+
 export default function SettingsPage() {
   const [session, setSession] = useState<SessionInfo | null>(null);
+  const [threadsStatus, setThreadsStatus] = useState<ThreadsStatus | null>(null);
   const [token, setToken] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Show Threads OAuth result from redirect
+  const threadsResult = searchParams.get("threads");
+  const threadsMessage = searchParams.get("message");
 
   useEffect(() => {
     fetch("/api/session")
       .then((r) => r.json())
       .then(setSession);
+
+    fetch("/api/auth/threads/status")
+      .then((r) => r.json())
+      .then(setThreadsStatus);
   }, []);
 
   async function handleSaveToken(e: React.FormEvent) {
@@ -62,6 +81,15 @@ export default function SettingsPage() {
     setIsSaving(false);
   }
 
+  async function handleDisconnectThreads() {
+    setIsDisconnecting(true);
+    const res = await fetch("/api/auth/threads/disconnect", { method: "POST" });
+    if (res.ok) {
+      setThreadsStatus({ connected: false });
+    }
+    setIsDisconnecting(false);
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -71,9 +99,29 @@ export default function SettingsPage() {
         </Button>
       </div>
 
+      {/* Threads OAuth result banner */}
+      {threadsResult === "connected" && (
+        <Alert className="mb-6 border-green-200 bg-green-50 text-green-800">
+          <AlertDescription>
+            Threads account connected successfully.
+          </AlertDescription>
+        </Alert>
+      )}
+      {threadsResult === "error" && (
+        <Alert className="mb-6" variant="destructive">
+          <AlertDescription>
+            Failed to connect Threads: {threadsMessage || "Unknown error"}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Substack Session Card */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Substack Session</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <SubstackIcon />
+            Substack Session
+          </CardTitle>
           <CardDescription>
             Paste your Substack session cookie so the scheduler can post notes
             on your behalf.
@@ -148,6 +196,49 @@ export default function SettingsPage() {
               {isSaving ? "Saving..." : "Save session"}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Threads Connection Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ThreadsIcon />
+            Threads
+          </CardTitle>
+          <CardDescription>
+            Connect your Threads account to schedule and cross-post notes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {threadsStatus === null ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : threadsStatus.connected ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Account:</span>
+                <Badge variant="default">@{threadsStatus.username}</Badge>
+              </div>
+              {threadsStatus.tokenExpiresAt && (
+                <p className="text-xs text-muted-foreground">
+                  Token expires{" "}
+                  {new Date(threadsStatus.tokenExpiresAt).toLocaleDateString()}
+                  {" "}(auto-refreshed)
+                </p>
+              )}
+              <Button
+                variant="outline"
+                onClick={handleDisconnectThreads}
+                disabled={isDisconnecting}
+              >
+                {isDisconnecting ? "Disconnecting..." : "Disconnect Threads"}
+              </Button>
+            </>
+          ) : (
+            <Button asChild>
+              <a href="/api/auth/threads">Connect Threads Account</a>
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
