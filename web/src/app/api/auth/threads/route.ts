@@ -28,14 +28,15 @@ export async function GET() {
     );
   }
 
-  const params = new URLSearchParams({
-    client_id: appId,
-    redirect_uri: redirectUri,
-    scope: SCOPES.join(","),
-    response_type: "code",
-    // Pass user ID in state to link OAuth back to our user
-    state: user.id,
-  });
+  // Build URL manually — URLSearchParams encodes commas in scope which
+  // breaks Meta's OAuth parser
+  const query = [
+    `client_id=${encodeURIComponent(appId)}`,
+    `redirect_uri=${encodeURIComponent(redirectUri)}`,
+    `scope=${SCOPES.join(",")}`,
+    `response_type=code`,
+    `state=${encodeURIComponent(user.id)}`,
+  ].join("&");
 
-  return NextResponse.redirect(`${THREADS_AUTH_URL}?${params.toString()}`);
+  return NextResponse.redirect(`${THREADS_AUTH_URL}?${query}`);
 }
