@@ -42,6 +42,10 @@ CREATE TABLE threads_insights (
   quotes INTEGER DEFAULT 0,
   fetched_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE threads_insights ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own threads insights" ON threads_insights
+  FOR ALL USING (auth.uid() = user_id);
+
 CREATE INDEX idx_threads_insights_note ON threads_insights(note_id, fetched_at DESC);
 CREATE INDEX idx_threads_insights_user ON threads_insights(user_id, fetched_at DESC);
 

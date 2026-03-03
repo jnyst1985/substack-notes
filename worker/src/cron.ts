@@ -11,7 +11,7 @@ import {
   getExpiringThreadsSessions,
   updateThreadsToken,
   getDeliveredThreadsNotes,
-  upsertThreadsInsight,
+  insertThreadsInsight,
 } from "./supabase.js";
 import { decrypt } from "./crypto.js";
 import { encrypt } from "./crypto-encrypt.js";
@@ -255,7 +255,7 @@ async function fetchThreadsInsights(): Promise<void> {
           }
         }
 
-        await upsertThreadsInsight(note.id, userId, {
+        await insertThreadsInsight(note.id, userId, {
           views: metrics.views,
           likes: metrics.likes,
           replies: metrics.replies,

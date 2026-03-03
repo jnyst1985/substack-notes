@@ -220,7 +220,7 @@ export async function getDeliveredThreadsNotes(
 }
 
 /** Upsert a threads_insights row */
-export async function upsertThreadsInsight(
+export async function insertThreadsInsight(
   noteId: string,
   userId: string,
   metrics: {

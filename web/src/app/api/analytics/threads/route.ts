@@ -70,15 +70,29 @@ export async function GET() {
     };
   });
 
-  // Daily trend data (aggregate all insights by date)
-  const dailyMap = new Map<string, { views: number; likes: number; replies: number }>();
+  // Daily trend data: for each date, use only the latest snapshot per note
+  // to show total engagement as of that date (not cumulative sums of snapshots)
+  const dailyNoteMap = new Map<string, Map<string, typeof insights[0]>>();
   for (const row of insights ?? []) {
     const dateStr = new Date(row.fetched_at).toISOString().slice(0, 10);
-    const existing = dailyMap.get(dateStr) ?? { views: 0, likes: 0, replies: 0 };
-    existing.views += row.views;
-    existing.likes += row.likes;
-    existing.replies += row.replies;
-    dailyMap.set(dateStr, existing);
+    if (!dailyNoteMap.has(dateStr)) {
+      dailyNoteMap.set(dateStr, new Map());
+    }
+    const noteMap = dailyNoteMap.get(dateStr)!;
+    // Keep only the latest entry per note per day (already sorted desc)
+    if (!noteMap.has(row.note_id)) {
+      noteMap.set(row.note_id, row);
+    }
+  }
+  const dailyMap = new Map<string, { views: number; likes: number; replies: number }>();
+  for (const [dateStr, noteMap] of dailyNoteMap) {
+    const totals = { views: 0, likes: 0, replies: 0 };
+    for (const row of noteMap.values()) {
+      totals.views += row.views;
+      totals.likes += row.likes;
+      totals.replies += row.replies;
+    }
+    dailyMap.set(dateStr, totals);
   }
 
   const dailyTrends = Array.from(dailyMap.entries())

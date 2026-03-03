@@ -57,6 +57,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const scheduledDate = new Date(scheduledTime);
+  if (isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+    return NextResponse.json(
+      { error: "Scheduled time must be a valid future date" },
+      { status: 400 }
+    );
+  }
+
   // Default to substack-only for backward compatibility
   const targetPlatforms: Platform[] = platforms && Array.isArray(platforms)
     ? platforms.filter((p: string) => VALID_PLATFORMS.includes(p as Platform))
