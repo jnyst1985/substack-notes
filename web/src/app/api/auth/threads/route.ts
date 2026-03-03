@@ -39,7 +39,6 @@ export async function GET() {
   ].join("&");
 
   const fullUrl = `${THREADS_AUTH_URL}?${query}`;
-  console.log("Threads OAuth redirect URL:", fullUrl);
 
   return NextResponse.redirect(fullUrl);
 }

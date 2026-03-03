@@ -9,21 +9,36 @@ const PROFILE_URL = "https://graph.threads.net/v1.0/me";
 // 60 days in milliseconds (long-lived token lifetime)
 const LONG_LIVED_TOKEN_LIFETIME_MS = 60 * 24 * 60 * 60 * 1000;
 
+// Resolve the public-facing base URL from reverse proxy headers.
+// Inside Docker on Railway, request.url resolves to http://0.0.0.0:3000
+// which is the internal container address — not reachable by the browser.
+function getBaseUrl(request: NextRequest): string {
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  const host =
+    request.headers.get("x-forwarded-host") || request.headers.get("host");
+  if (host) return `${proto}://${host}`;
+  // Fallback to THREADS_REDIRECT_URI domain if headers are missing
+  const redirectUri = process.env.THREADS_REDIRECT_URI;
+  if (redirectUri) return new URL(redirectUri).origin;
+  return "http://localhost:3000";
+}
+
 // GET /api/auth/threads/callback — exchange code for token, store in DB
 export async function GET(request: NextRequest) {
+  const baseUrl = getBaseUrl(request);
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
   const errorParam = request.nextUrl.searchParams.get("error");
 
   if (errorParam) {
     return NextResponse.redirect(
-      new URL(`/settings?threads=error&message=${errorParam}`, request.url)
+      new URL(`/settings?threads=error&message=${errorParam}`, baseUrl)
     );
   }
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL("/settings?threads=error&message=missing_params", request.url)
+      new URL("/settings?threads=error&message=missing_params", baseUrl)
     );
   }
 
@@ -33,7 +48,7 @@ export async function GET(request: NextRequest) {
   // Verify the state matches the logged-in user
   if (!user || user.id !== state) {
     return NextResponse.redirect(
-      new URL("/settings?threads=error&message=auth_mismatch", request.url)
+      new URL("/settings?threads=error&message=auth_mismatch", baseUrl)
     );
   }
 
@@ -43,7 +58,7 @@ export async function GET(request: NextRequest) {
 
   if (!appId || !appSecret || !redirectUri) {
     return NextResponse.redirect(
-      new URL("/settings?threads=error&message=not_configured", request.url)
+      new URL("/settings?threads=error&message=not_configured", baseUrl)
     );
   }
 
@@ -65,7 +80,7 @@ export async function GET(request: NextRequest) {
       const err = await shortTokenRes.text();
       console.error("Threads short token exchange failed:", err);
       return NextResponse.redirect(
-        new URL("/settings?threads=error&message=token_exchange_failed", request.url)
+        new URL("/settings?threads=error&message=token_exchange_failed", baseUrl)
       );
     }
 
@@ -87,7 +102,7 @@ export async function GET(request: NextRequest) {
       const err = await longTokenRes.text();
       console.error("Threads long-lived token exchange failed:", err);
       return NextResponse.redirect(
-        new URL("/settings?threads=error&message=long_token_failed", request.url)
+        new URL("/settings?threads=error&message=long_token_failed", baseUrl)
       );
     }
 
@@ -102,7 +117,7 @@ export async function GET(request: NextRequest) {
     if (!profileRes.ok) {
       console.error("Threads profile fetch failed:", await profileRes.text());
       return NextResponse.redirect(
-        new URL("/settings?threads=error&message=profile_failed", request.url)
+        new URL("/settings?threads=error&message=profile_failed", baseUrl)
       );
     }
 
@@ -131,17 +146,17 @@ export async function GET(request: NextRequest) {
     if (dbError) {
       console.error("Failed to store Threads session:", dbError);
       return NextResponse.redirect(
-        new URL("/settings?threads=error&message=db_error", request.url)
+        new URL("/settings?threads=error&message=db_error", baseUrl)
       );
     }
 
     return NextResponse.redirect(
-      new URL("/settings?threads=connected", request.url)
+      new URL("/settings?threads=connected", baseUrl)
     );
   } catch (err) {
     console.error("Threads OAuth callback error:", err);
     return NextResponse.redirect(
-      new URL("/settings?threads=error&message=unexpected", request.url)
+      new URL("/settings?threads=error&message=unexpected", baseUrl)
     );
   }
 }
