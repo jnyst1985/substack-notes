@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const THREADS_AUTH_URL = "https://threads.net/oauth/authorize";
+const THREADS_AUTH_URL = "https://www.threads.net/oauth/authorize";
 const SCOPES = [
   "threads_basic",
   "threads_content_publish",
