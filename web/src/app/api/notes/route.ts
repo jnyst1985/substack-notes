@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { Platform } from "@/lib/types";
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
+
+const VALID_PLATFORMS: Platform[] = ["substack", "threads"];
 
 async function parseJsonBody(request: NextRequest) {
   try {
@@ -31,7 +35,7 @@ export async function GET() {
   return NextResponse.json({ notes });
 }
 
-// POST /api/notes — create a new scheduled note
+// POST /api/notes — create scheduled note(s) for one or more platforms
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -44,7 +48,7 @@ export async function POST(request: NextRequest) {
   if (!body) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  const { content, scheduledTime } = body;
+  const { content, scheduledTime, platforms } = body;
 
   if (!content?.trim() || !scheduledTime) {
     return NextResponse.json(
@@ -53,21 +57,43 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: note, error } = await supabase
+  // Default to substack-only for backward compatibility
+  const targetPlatforms: Platform[] = platforms && Array.isArray(platforms)
+    ? platforms.filter((p: string) => VALID_PLATFORMS.includes(p as Platform))
+    : ["substack"];
+
+  if (targetPlatforms.length === 0) {
+    return NextResponse.json(
+      { error: "At least one valid platform is required" },
+      { status: 400 }
+    );
+  }
+
+  // When posting to multiple platforms, link them with a shared group_id
+  const groupId = targetPlatforms.length > 1 ? randomUUID() : null;
+
+  const rows = targetPlatforms.map((platform: Platform) => ({
+    user_id: user.id,
+    content: content.trim(),
+    scheduled_time: scheduledTime,
+    platform,
+    group_id: groupId,
+  }));
+
+  const { data: notes, error } = await supabase
     .from("scheduled_notes")
-    .insert({
-      user_id: user.id,
-      content: content.trim(),
-      scheduled_time: scheduledTime,
-    })
-    .select()
-    .single();
+    .insert(rows)
+    .select();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ note }, { status: 201 });
+  // Return single note for backward compat, full array for multi-platform
+  if (notes.length === 1) {
+    return NextResponse.json({ note: notes[0] }, { status: 201 });
+  }
+  return NextResponse.json({ notes }, { status: 201 });
 }
 
 // PUT /api/notes — update a pending note
@@ -182,7 +208,7 @@ export async function PATCH(request: NextRequest) {
   return NextResponse.json({ note });
 }
 
-// DELETE /api/notes?id=xxx — delete a note
+// DELETE /api/notes?id=xxx&deleteGroup=true — delete a note (or its entire cross-post group)
 export async function DELETE(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -196,6 +222,32 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Note ID is required" }, { status: 400 });
   }
 
+  const deleteGroup = request.nextUrl.searchParams.get("deleteGroup") === "true";
+
+  if (deleteGroup) {
+    // Look up the note's group_id, then delete all notes in the group
+    const { data: note } = await supabase
+      .from("scheduled_notes")
+      .select("group_id")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+
+    if (note?.group_id) {
+      const { error } = await supabase
+        .from("scheduled_notes")
+        .delete()
+        .eq("group_id", note.group_id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ success: true, deletedGroup: true });
+    }
+  }
+
+  // Single note delete (default behavior)
   const { error } = await supabase
     .from("scheduled_notes")
     .delete()
