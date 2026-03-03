@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ interface ThreadsStatus {
   tokenExpiresAt?: string;
 }
 
-export default function SettingsPage() {
+function SettingsContent() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [threadsStatus, setThreadsStatus] = useState<ThreadsStatus | null>(null);
   const [token, setToken] = useState("");
@@ -242,5 +242,13 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense>
+      <SettingsContent />
+    </Suspense>
   );
 }
