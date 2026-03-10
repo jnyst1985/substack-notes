@@ -5,7 +5,13 @@ function getKey(): Buffer {
   if (!key) {
     throw new Error("ENCRYPTION_KEY environment variable is not set");
   }
-  return Buffer.from(key, "hex");
+  const buffer = Buffer.from(key, "hex");
+  if (buffer.length !== 32) {
+    throw new Error(
+      `ENCRYPTION_KEY must be exactly 32 bytes (64 hex chars), got ${buffer.length}`
+    );
+  }
+  return buffer;
 }
 
 /** Encrypt a string using AES-256-GCM (same format as web/src/lib/crypto.ts) */

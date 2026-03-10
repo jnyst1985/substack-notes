@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { isAuthenticated } from "../utils/substack-api";
 import {
   syncSessionToken,
@@ -80,9 +80,15 @@ function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const confirmDeleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     init();
+    return () => {
+      if (confirmDeleteTimerRef.current) clearTimeout(confirmDeleteTimerRef.current);
+    };
   }, []);
 
   async function init() {
@@ -148,12 +154,32 @@ function App() {
     if (note) {
       setContent("");
       setScheduledTime("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
       await loadNotes();
     } else {
       alert("Failed to schedule note. Please try again.");
     }
 
     setIsSubmitting(false);
+  }
+
+  function handleDeleteClick(id: string) {
+    if (confirmDeleteId === id) {
+      handleDelete(id);
+      setConfirmDeleteId(null);
+      if (confirmDeleteTimerRef.current) {
+        clearTimeout(confirmDeleteTimerRef.current);
+        confirmDeleteTimerRef.current = null;
+      }
+    } else {
+      setConfirmDeleteId(id);
+      if (confirmDeleteTimerRef.current) clearTimeout(confirmDeleteTimerRef.current);
+      confirmDeleteTimerRef.current = setTimeout(() => {
+        setConfirmDeleteId(null);
+        confirmDeleteTimerRef.current = null;
+      }, 3000);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -238,8 +264,12 @@ function App() {
 
   if (isLoggedIn === null) {
     return (
-      <div className="bg-[#fafafa] rounded-xl border border-[#e5e5e5] p-6 text-center text-[#737373]">
-        Loading...
+      <div className="bg-[#fafafa] rounded-xl border border-[#e5e5e5] p-6">
+        <div className="space-y-3 animate-pulse">
+          <div className="h-6 bg-[#e5e5e5] rounded w-3/4"></div>
+          <div className="h-24 bg-[#e5e5e5] rounded"></div>
+          <div className="h-8 bg-[#e5e5e5] rounded w-1/2"></div>
+        </div>
       </div>
     );
   }
@@ -303,7 +333,9 @@ function App() {
       {/* Form Area */}
       <div className="px-6 pb-5 flex flex-col gap-4">
         {/* Textarea */}
+        <label htmlFor="note-content" className="sr-only">Write your note</label>
         <textarea
+          id="note-content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Write your note..."
@@ -314,7 +346,9 @@ function App() {
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <CalendarIcon />
+            <label htmlFor="schedule-time" className="sr-only">Schedule time</label>
             <input
+              id="schedule-time"
               type="datetime-local"
               value={scheduledTime}
               onChange={(e) => setScheduledTime(e.target.value)}
@@ -357,13 +391,17 @@ function App() {
         {editError && (
           <p className="text-sm text-red-600">{editError}</p>
         )}
+
+        {showSuccess && (
+          <p className="text-sm text-green-600 text-center py-1">Note scheduled successfully!</p>
+        )}
       </div>
 
       {/* Divider */}
       <div className="h-px bg-[#e5e5e5]" />
 
       {/* Upcoming Section */}
-      {pendingNotes.length > 0 && (
+      {pendingNotes.length > 0 ? (
         <div className="px-6 py-4">
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-sm font-semibold text-[#0a0a0a]">Upcoming</h2>
@@ -400,16 +438,29 @@ function App() {
                   <EditIcon />
                 </button>
                 <button
-                  onClick={() => handleDelete(note.id)}
+                  onClick={() => handleDeleteClick(note.id)}
                   disabled={editingNoteId !== null}
-                  className="p-1 text-[#a3a3a3] hover:text-red-500 disabled:opacity-30 transition-colors"
-                  title="Delete"
+                  className={`p-1 transition-colors ${
+                    confirmDeleteId === note.id
+                      ? "text-red-500"
+                      : "text-[#a3a3a3] hover:text-red-500"
+                  } disabled:opacity-30`}
+                  title={confirmDeleteId === note.id ? "Click again to confirm" : "Delete"}
                 >
-                  <DeleteIcon />
+                  {confirmDeleteId === note.id ? (
+                    <span className="text-xs font-medium">Confirm?</span>
+                  ) : (
+                    <DeleteIcon />
+                  )}
                 </button>
               </li>
             ))}
           </ul>
+        </div>
+      ) : (
+        <div className="px-6 py-8 text-center">
+          <p className="text-sm text-[#737373]">No scheduled notes yet</p>
+          <p className="text-xs text-[#a3a3a3] mt-1">Schedule your first note above</p>
         </div>
       )}
 

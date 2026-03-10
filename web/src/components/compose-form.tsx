@@ -18,7 +18,8 @@ const EMPTY_DOC: JSONContent = {
   content: [{ type: "paragraph" }],
 };
 
-const THREADS_CHAR_LIMIT = 500;
+import { THREADS } from "@/lib/constants";
+const THREADS_CHAR_LIMIT = THREADS.CHAR_LIMIT;
 
 interface ComposeFormProps {
   onNoteCreated: () => void;
@@ -198,7 +199,6 @@ export function ComposeForm({
                     checked={selectedPlatforms.includes("substack")}
                     onCheckedChange={() => togglePlatform("substack")}
                     disabled={!substackConnected}
-                    aria-label="Post to Substack"
                   />
                   <SubstackIcon className={!substackConnected ? "opacity-40" : ""} />
                   <span className={`text-sm ${!substackConnected ? "text-muted-foreground" : ""}`}>
@@ -210,7 +210,6 @@ export function ComposeForm({
                     checked={selectedPlatforms.includes("threads")}
                     onCheckedChange={() => togglePlatform("threads")}
                     disabled={!threadsConnected}
-                    aria-label="Post to Threads"
                   />
                   <ThreadsIcon className={!threadsConnected ? "opacity-40" : ""} />
                   <span className={`text-sm ${!threadsConnected ? "text-muted-foreground" : ""}`}>

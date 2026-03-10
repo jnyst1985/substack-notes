@@ -1,7 +1,8 @@
 import { extractPlainTextFromProseMirror, truncateForThreads } from "./content-utils.js";
 
 const THREADS_API_BASE = "https://graph.threads.net/v1.0";
-const POST_DELAY_MS = 2000;
+import { THREADS } from "./constants.js";
+const POST_DELAY_MS = THREADS.POST_DELAY_MS;
 
 interface ThreadsPostResult {
   success: boolean;

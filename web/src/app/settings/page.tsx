@@ -147,8 +147,11 @@ function SettingsContent() {
             </div>
           )}
 
-          <Alert>
-            <AlertDescription>
+          <Card className="bg-blue-50 border-blue-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">How to get your session cookie</CardTitle>
+            </CardHeader>
+            <CardContent>
               <ol className="list-decimal list-inside text-sm space-y-1">
                 <li>
                   Open{" "}
@@ -169,8 +172,8 @@ function SettingsContent() {
                 </li>
                 <li>Paste it below and click Save</li>
               </ol>
-            </AlertDescription>
-          </Alert>
+            </CardContent>
+          </Card>
 
           <form onSubmit={handleSaveToken} className="flex flex-col gap-3">
             <div className="flex flex-col gap-2">

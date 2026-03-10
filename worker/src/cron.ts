@@ -12,20 +12,31 @@ import {
   updateThreadsToken,
   getDeliveredThreadsNotes,
   insertThreadsInsight,
+  resetStuckNotes,
 } from "./supabase.js";
 import { decrypt } from "./crypto.js";
 import { encrypt } from "./crypto-encrypt.js";
 import { postNotesWithPuppeteer } from "./poster.js";
 import { postThreadsNotes } from "./threads-poster.js";
 
+import { THREADS as THREADS_CONFIG } from "./constants.js";
+
 const THREADS_REFRESH_URL = "https://graph.threads.net/refresh_access_token";
 const THREADS_INSIGHTS_URL = "https://graph.threads.net";
-// Refresh tokens expiring within 7 days
-const TOKEN_REFRESH_WINDOW_DAYS = 7;
-// 60 days for new long-lived token
-const LONG_LIVED_TOKEN_LIFETIME_MS = 60 * 24 * 60 * 60 * 1000;
-// Fetch insights for notes delivered in last 30 days
-const INSIGHTS_LOOKBACK_DAYS = 30;
+const TOKEN_REFRESH_WINDOW_DAYS = THREADS_CONFIG.REFRESH_WINDOW_DAYS;
+const LONG_LIVED_TOKEN_LIFETIME_MS = THREADS_CONFIG.TOKEN_LIFETIME_MS;
+const INSIGHTS_LOOKBACK_DAYS = THREADS_CONFIG.INSIGHTS_LOOKBACK_DAYS;
+
+/** Group an array of items by user_id */
+function groupByUserId<T extends { user_id: string }>(items: T[]): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const item of items) {
+    const existing = map.get(item.user_id) ?? [];
+    existing.push(item);
+    map.set(item.user_id, existing);
+  }
+  return map;
+}
 
 /** Step 1: Proactively refresh Threads tokens nearing expiry */
 async function refreshExpiringThreadsTokens(): Promise<void> {
@@ -52,6 +63,10 @@ async function refreshExpiringThreadsTokens(): Promise<void> {
       }
 
       const data = await res.json();
+      if (!data.access_token || typeof data.access_token !== "string") {
+        console.error(`Invalid token refresh response for user ${session.user_id}`);
+        continue;
+      }
       const newEncrypted = encrypt(data.access_token);
       const newExpiry = new Date(Date.now() + LONG_LIVED_TOKEN_LIFETIME_MS).toISOString();
 
@@ -74,13 +89,7 @@ async function processSubstackNotes(): Promise<void> {
 
   console.log(`Found ${dueNotes.length} due Substack note(s).`);
 
-  // Group notes by user so we can reuse one browser session per user
-  const notesByUser = new Map<string, typeof dueNotes>();
-  for (const note of dueNotes) {
-    const userNotes = notesByUser.get(note.user_id) ?? [];
-    userNotes.push(note);
-    notesByUser.set(note.user_id, userNotes);
-  }
+  const notesByUser = groupByUserId(dueNotes);
 
   for (const [userId, userNotes] of notesByUser) {
     console.log(`Processing ${userNotes.length} Substack note(s) for user ${userId}`);
@@ -142,13 +151,7 @@ async function processThreadsNotes(): Promise<void> {
 
   console.log(`Found ${dueNotes.length} due Threads note(s).`);
 
-  // Group notes by user
-  const notesByUser = new Map<string, typeof dueNotes>();
-  for (const note of dueNotes) {
-    const userNotes = notesByUser.get(note.user_id) ?? [];
-    userNotes.push(note);
-    notesByUser.set(note.user_id, userNotes);
-  }
+  const notesByUser = groupByUserId(dueNotes);
 
   for (const [userId, userNotes] of notesByUser) {
     console.log(`Processing ${userNotes.length} Threads note(s) for user ${userId}`);
@@ -203,13 +206,7 @@ async function fetchThreadsInsights(): Promise<void> {
 
   console.log(`Fetching insights for ${deliveredNotes.length} Threads note(s)...`);
 
-  // Group by user to reuse access tokens
-  const notesByUser = new Map<string, typeof deliveredNotes>();
-  for (const note of deliveredNotes) {
-    const userNotes = notesByUser.get(note.user_id) ?? [];
-    userNotes.push(note);
-    notesByUser.set(note.user_id, userNotes);
-  }
+  const notesByUser = groupByUserId(deliveredNotes);
 
   for (const [userId, userNotes] of notesByUser) {
     const session = await getThreadsSession(userId);
@@ -223,7 +220,14 @@ async function fetchThreadsInsights(): Promise<void> {
     }
 
     for (const note of userNotes) {
+      // Validate platform_post_id format before using in URL
+      if (!note.platform_post_id || !/^\d+$/.test(note.platform_post_id)) {
+        console.error(`Invalid platform_post_id for note ${note.id}: ${note.platform_post_id}`);
+        continue;
+      }
+
       try {
+        // Note: Meta Graph API requires access_token as query parameter
         const res = await fetch(
           `${THREADS_INSIGHTS_URL}/${note.platform_post_id}/insights` +
           `?metric=views,likes,replies,reposts,quotes` +
@@ -271,6 +275,12 @@ async function fetchThreadsInsights(): Promise<void> {
 
 async function main() {
   console.log(`[${new Date().toISOString()}] Cron worker starting...`);
+
+  // Step 0: Reset notes stuck in "posting" status from failed previous runs
+  const resetCount = await resetStuckNotes();
+  if (resetCount > 0) {
+    console.log(`Reset ${resetCount} stuck note(s) back to pending`);
+  }
 
   // Step 1: Refresh expiring Threads tokens
   await refreshExpiringThreadsTokens();

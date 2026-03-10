@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { encrypt } from "@/lib/crypto";
+import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 const TOKEN_URL = "https://graph.threads.net/oauth/access_token";
@@ -45,8 +46,18 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Verify the state matches the logged-in user
-  if (!user || user.id !== state) {
+  // Verify the state matches the logged-in user (constant-time comparison)
+  if (!user) {
+    return NextResponse.redirect(
+      new URL("/settings?threads=error&message=auth_mismatch", baseUrl)
+    );
+  }
+  const stateBuffer = Buffer.from(state || "");
+  const userIdBuffer = Buffer.from(user.id);
+  const stateValid =
+    stateBuffer.length === userIdBuffer.length &&
+    timingSafeEqual(stateBuffer, userIdBuffer);
+  if (!stateValid) {
     return NextResponse.redirect(
       new URL("/settings?threads=error&message=auth_mismatch", baseUrl)
     );
@@ -77,8 +88,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!shortTokenRes.ok) {
-      const err = await shortTokenRes.text();
-      console.error("Threads short token exchange failed:", err);
+      console.error(`Threads short token exchange failed: HTTP ${shortTokenRes.status}`);
       return NextResponse.redirect(
         new URL("/settings?threads=error&message=token_exchange_failed", baseUrl)
       );
@@ -99,8 +109,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!longTokenRes.ok) {
-      const err = await longTokenRes.text();
-      console.error("Threads long-lived token exchange failed:", err);
+      console.error(`Threads long-lived token exchange failed: HTTP ${longTokenRes.status}`);
       return NextResponse.redirect(
         new URL("/settings?threads=error&message=long_token_failed", baseUrl)
       );
@@ -115,7 +124,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!profileRes.ok) {
-      console.error("Threads profile fetch failed:", await profileRes.text());
+      console.error(`Threads profile fetch failed: HTTP ${profileRes.status}`);
       return NextResponse.redirect(
         new URL("/settings?threads=error&message=profile_failed", baseUrl)
       );

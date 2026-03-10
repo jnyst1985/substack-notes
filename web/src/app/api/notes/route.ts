@@ -57,6 +57,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const MAX_CONTENT_LENGTH = 50000;
+  if (content.length > MAX_CONTENT_LENGTH) {
+    return NextResponse.json(
+      { error: "Content exceeds maximum length" },
+      { status: 413 }
+    );
+  }
+
   const scheduledDate = new Date(scheduledTime);
   if (isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
     return NextResponse.json(
@@ -138,6 +146,14 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       { error: "Can only edit pending notes" },
       { status: 400 }
+    );
+  }
+
+  const MAX_CONTENT_LENGTH = 50000;
+  if (content && content.length > MAX_CONTENT_LENGTH) {
+    return NextResponse.json(
+      { error: "Content exceeds maximum length" },
+      { status: 413 }
     );
   }
 

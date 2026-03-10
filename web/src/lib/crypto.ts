@@ -9,8 +9,13 @@ function getKey(): Buffer {
   if (!key) {
     throw new Error("ENCRYPTION_KEY environment variable is not set");
   }
-  // Key should be 32 bytes for AES-256
-  return Buffer.from(key, "hex");
+  const buffer = Buffer.from(key, "hex");
+  if (buffer.length !== 32) {
+    throw new Error(
+      `ENCRYPTION_KEY must be exactly 32 bytes (64 hex chars), got ${buffer.length}`
+    );
+  }
+  return buffer;
 }
 
 export function encrypt(text: string): string {

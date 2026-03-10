@@ -5,7 +5,8 @@ import type { Browser, Page } from "puppeteer";
 puppeteer.use(StealthPlugin());
 
 const SUBSTACK_API_URL = "https://substack.com/api/v1/comment/feed";
-const POST_DELAY_MS = 2000;
+import { SUBSTACK } from "./constants.js";
+const POST_DELAY_MS = SUBSTACK.POST_DELAY_MS;
 
 interface PostResult {
   success: boolean;

@@ -73,7 +73,9 @@ export function CalendarView({ notes, onEdit }: CalendarViewProps) {
               <button
                 key={note.id}
                 onClick={() => note.status === "pending" && onEdit(note)}
-                className="flex items-center gap-2 p-2 rounded-md border text-left hover:bg-muted transition-colors"
+                disabled={note.status !== "pending"}
+                aria-label={`Edit note: ${extractPlainText(note.content).split("\n")[0].slice(0, 30)}`}
+                className="flex items-center gap-2 p-2 rounded-md border text-left hover:bg-muted focus:ring-2 focus:ring-primary focus:ring-offset-1 transition-colors disabled:opacity-60 disabled:cursor-default"
               >
                 {note.platform === "substack" ? (
                   <SubstackIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />

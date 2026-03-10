@@ -4,7 +4,8 @@
   "private": true,
   "description": "Puppeteer-based cron worker for posting Substack notes",
   "scripts": {
-    "start": "tsx src/cron.ts"
+    "start": "tsx src/cron.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
@@ -15,6 +16,7 @@
   "devDependencies": {
     "@types/node": "^25.3.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

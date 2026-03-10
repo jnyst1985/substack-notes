@@ -1,9 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_URL) throw new Error("SUPABASE_URL environment variable is not set");
+if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error("SUPABASE_SERVICE_ROLE_KEY environment variable is not set");
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 export interface DueNote {
   id: string;
@@ -134,17 +136,42 @@ export async function setNotePlatformPostId(
 }
 
 export async function updateSessionVerified(userId: string): Promise<void> {
-  await supabase
+  const { error } = await supabase
     .from("substack_sessions")
     .update({ last_verified_at: new Date().toISOString() })
     .eq("user_id", userId);
+
+  if (error) {
+    console.error(`Failed to update session verified for ${userId}:`, error.message);
+  }
 }
 
 export async function clearSessionVerified(userId: string): Promise<void> {
-  await supabase
+  const { error } = await supabase
     .from("substack_sessions")
     .update({ last_verified_at: null })
     .eq("user_id", userId);
+
+  if (error) {
+    console.error(`Failed to clear session verified for ${userId}:`, error.message);
+  }
+}
+
+/** Reset notes stuck in "posting" status (from crashed previous cron runs) */
+export async function resetStuckNotes(): Promise<number> {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("scheduled_notes")
+    .update({ status: "pending", updated_at: new Date().toISOString() })
+    .eq("status", "posting")
+    .lt("updated_at", oneHourAgo)
+    .select("id");
+
+  if (error) {
+    console.error("Failed to reset stuck notes:", error.message);
+    return 0;
+  }
+  return data?.length ?? 0;
 }
 
 /** Get Threads sessions expiring within N days (for proactive refresh) */

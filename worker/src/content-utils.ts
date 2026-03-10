@@ -41,7 +41,8 @@ function extractTextFromNode(node: ProseMirrorNode): string {
     .trim();
 }
 
-const THREADS_CHAR_LIMIT = 500;
+import { THREADS } from "./constants.js";
+const THREADS_CHAR_LIMIT = THREADS.CHAR_LIMIT;
 
 /** Truncate text to Threads character limit */
 export function truncateForThreads(text: string): string {
