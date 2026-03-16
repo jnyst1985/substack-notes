@@ -8,4 +8,5 @@ export const THREADS = {
 
 export const SUBSTACK = {
   POST_DELAY_MS: 2000,
+  INSIGHTS_POST_LIMIT: 50,
 } as const;

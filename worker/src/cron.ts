@@ -19,6 +19,7 @@ import { encrypt } from "./crypto-encrypt.js";
 import { postNotesWithPuppeteer } from "./poster.js";
 import { postThreadsNotes } from "./threads-poster.js";
 
+import { fetchSubstackInsights } from "./substack-insights.js";
 import { THREADS as THREADS_CONFIG } from "./constants.js";
 
 const THREADS_REFRESH_URL = "https://graph.threads.net/refresh_access_token";
@@ -293,6 +294,9 @@ async function main() {
 
   // Step 4: Fetch analytics for delivered Threads posts
   await fetchThreadsInsights();
+
+  // Step 5: Fetch Substack post insights (public API)
+  await fetchSubstackInsights();
 
   console.log("Cron worker finished.");
   process.exit(0);

@@ -21,6 +21,7 @@ interface SessionInfo {
   hasSession: boolean;
   updatedAt?: string;
   lastVerifiedAt?: string | null;
+  subdomain?: string | null;
 }
 
 interface ThreadsStatus {
@@ -33,9 +34,12 @@ function SettingsContent() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [threadsStatus, setThreadsStatus] = useState<ThreadsStatus | null>(null);
   const [token, setToken] = useState("");
+  const [subdomain, setSubdomain] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingSubdomain, setIsSavingSubdomain] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [subdomainSuccess, setSubdomainSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,7 +51,10 @@ function SettingsContent() {
   useEffect(() => {
     fetch("/api/session")
       .then((r) => r.json())
-      .then(setSession);
+      .then((s: SessionInfo) => {
+        setSession(s);
+        if (s.subdomain) setSubdomain(s.subdomain);
+      });
 
     fetch("/api/auth/threads/status")
       .then((r) => r.json())
@@ -65,7 +72,10 @@ function SettingsContent() {
     const res = await fetch("/api/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: token.trim() }),
+      body: JSON.stringify({
+        token: token.trim(),
+        subdomain: subdomain.trim() || undefined,
+      }),
     });
 
     if (res.ok) {
@@ -79,6 +89,26 @@ function SettingsContent() {
     }
 
     setIsSaving(false);
+  }
+
+  async function handleSaveSubdomain(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSavingSubdomain(true);
+    setSubdomainSuccess(false);
+
+    const res = await fetch("/api/session", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subdomain: subdomain.trim() }),
+    });
+
+    if (res.ok) {
+      setSubdomainSuccess(true);
+      const sessionRes = await fetch("/api/session");
+      const s = await sessionRes.json();
+      setSession(s);
+    }
+    setIsSavingSubdomain(false);
   }
 
   async function handleDisconnectThreads() {
@@ -197,6 +227,54 @@ function SettingsContent() {
 
             <Button type="submit" disabled={!token.trim() || isSaving}>
               {isSaving ? "Saving..." : "Save session"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Substack Publication Card */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SubstackIcon />
+            Substack Publication
+          </CardTitle>
+          <CardDescription>
+            Enter your Substack subdomain to enable post analytics. This is the
+            part before &quot;.substack.com&quot; in your publication URL.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSaveSubdomain} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="subdomain">Subdomain</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="subdomain"
+                  value={subdomain}
+                  onChange={(e) => {
+                    setSubdomain(e.target.value);
+                    setSubdomainSuccess(false);
+                  }}
+                  placeholder="e.g. beforeai"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  .substack.com
+                </span>
+              </div>
+            </div>
+            {subdomainSuccess && (
+              <p className="text-sm text-green-600">
+                Subdomain saved. Analytics will be fetched on the next cron
+                cycle.
+              </p>
+            )}
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={isSavingSubdomain}
+            >
+              {isSavingSubdomain ? "Saving..." : "Save subdomain"}
             </Button>
           </form>
         </CardContent>

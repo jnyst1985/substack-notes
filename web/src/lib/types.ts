@@ -47,3 +47,27 @@ export interface ThreadsInsight {
   quotes: number;
   fetched_at: string;
 }
+
+export interface SubstackPostInsight {
+  id: string;
+  user_id: string;
+  post_id: string;
+  title: string | null;
+  slug: string | null;
+  post_date: string | null;
+  type: string | null;
+  reaction_count: number;
+  comment_count: number;
+  restacks: number;
+  views: number | null;
+  fetched_at: string;
+}
+
+export interface SubstackSubscriberStats {
+  id: string;
+  user_id: string;
+  total_subscribers: number;
+  free_subscribers: number | null;
+  paid_subscribers: number | null;
+  fetched_at: string;
+}

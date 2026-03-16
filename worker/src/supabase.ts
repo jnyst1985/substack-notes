@@ -246,6 +246,71 @@ export async function getDeliveredThreadsNotes(
   return (data ?? []) as DeliveredThreadsNote[];
 }
 
+// ---------- Substack Insights ----------
+
+interface SubstackSessionWithSubdomain {
+  user_id: string;
+  subdomain: string;
+}
+
+/** Get all Substack sessions that have a subdomain configured */
+export async function getSubstackSessions(): Promise<
+  SubstackSessionWithSubdomain[]
+> {
+  const { data, error } = await supabase
+    .from("substack_sessions")
+    .select("user_id, subdomain")
+    .not("subdomain", "is", null);
+
+  if (error) {
+    console.error("Failed to query Substack sessions:", error.message);
+    return [];
+  }
+
+  return (data ?? []).filter(
+    (s): s is SubstackSessionWithSubdomain => !!s.subdomain
+  );
+}
+
+interface PostInsightData {
+  post_id: string;
+  title: string;
+  slug: string;
+  post_date: string;
+  type: string;
+  reaction_count: number;
+  comment_count: number;
+  restacks: number;
+}
+
+/** Insert a Substack post insight snapshot */
+export async function upsertSubstackPostInsight(
+  userId: string,
+  data: PostInsightData
+): Promise<void> {
+  const { error } = await supabase.from("substack_post_insights").insert({
+    user_id: userId,
+    post_id: data.post_id,
+    title: data.title,
+    slug: data.slug,
+    post_date: data.post_date,
+    type: data.type,
+    reaction_count: data.reaction_count,
+    comment_count: data.comment_count,
+    restacks: data.restacks,
+    fetched_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    // Unique constraint violation (already fetched today) is expected — ignore
+    if (error.code === "23505") return;
+    console.error(
+      `Failed to insert post insight for post ${data.post_id}:`,
+      error.message
+    );
+  }
+}
+
 /** Upsert a threads_insights row */
 export async function insertThreadsInsight(
   noteId: string,

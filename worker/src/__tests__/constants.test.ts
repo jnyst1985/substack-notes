@@ -26,4 +26,8 @@ describe("worker constants", () => {
   it("SUBSTACK.POST_DELAY_MS is 2000", () => {
     expect(SUBSTACK.POST_DELAY_MS).toBe(2000);
   });
+
+  it("SUBSTACK.INSIGHTS_POST_LIMIT is 50", () => {
+    expect(SUBSTACK.INSIGHTS_POST_LIMIT).toBe(50);
+  });
 });
