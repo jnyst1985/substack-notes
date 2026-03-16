@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import {
   Card,
   CardContent,
@@ -78,16 +77,14 @@ interface SubstackAnalyticsData {
 
 function StatCard({ title, value }: { title: string; value: number }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-bold">{value.toLocaleString()}</p>
-      </CardContent>
-    </Card>
+    <div className="bg-card rounded-[20px] border border-border p-5">
+      <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+        {title}
+      </p>
+      <p className="font-mono text-2xl font-medium mt-1">
+        {value.toLocaleString()}
+      </p>
+    </div>
   );
 }
 
@@ -108,10 +105,10 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+      className={`px-4 py-2 text-sm font-medium rounded-3xl transition-colors ${
         active
           ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-muted"
+          : "bg-secondary text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}
@@ -122,7 +119,7 @@ function TabButton({
 function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
   if (!data || data.posts.length === 0) {
     return (
-      <Card>
+      <Card className="rounded-[20px]">
         <CardContent className="py-12 text-center">
           <p className="text-muted-foreground">
             No Threads analytics yet. Post a note to Threads and check back
@@ -143,7 +140,7 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
       </div>
 
       {data.dailyTrends.length > 1 && (
-        <Card>
+        <Card className="rounded-[20px]">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
               Daily Engagement
@@ -152,7 +149,7 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={data.dailyTrends}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E8E4DF" />
                 <XAxis
                   dataKey="date"
                   tick={{ fontSize: 12 }}
@@ -167,7 +164,7 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
                 <Line
                   type="monotone"
                   dataKey="views"
-                  stroke="#171717"
+                  stroke="#7C9082"
                   strokeWidth={2}
                   dot={false}
                   name="Views"
@@ -175,7 +172,7 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
                 <Line
                   type="monotone"
                   dataKey="likes"
-                  stroke="#22c55e"
+                  stroke="#22C55E"
                   strokeWidth={2}
                   dot={false}
                   name="Likes"
@@ -183,7 +180,7 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
                 <Line
                   type="monotone"
                   dataKey="replies"
-                  stroke="#3b82f6"
+                  stroke="#3B82F6"
                   strokeWidth={2}
                   dot={false}
                   name="Replies"
@@ -194,7 +191,7 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
         </Card>
       )}
 
-      <Card>
+      <Card className="rounded-[20px]">
         <CardHeader>
           <CardTitle className="text-sm font-medium">
             Post Performance
@@ -208,16 +205,16 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">
                     Post
                   </th>
-                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right">
+                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right font-mono">
                     Views
                   </th>
-                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right">
+                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right font-mono">
                     Likes
                   </th>
-                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right">
+                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right font-mono">
                     Replies
                   </th>
-                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right">
+                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right font-mono">
                     Reposts
                   </th>
                   <th className="pb-2 pl-2 font-medium text-muted-foreground text-right">
@@ -234,16 +231,16 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
                         50
                       )}
                     </td>
-                    <td className="py-2 px-2 text-right">
+                    <td className="py-2 px-2 text-right font-mono">
                       {post.views.toLocaleString()}
                     </td>
-                    <td className="py-2 px-2 text-right">
+                    <td className="py-2 px-2 text-right font-mono">
                       {post.likes.toLocaleString()}
                     </td>
-                    <td className="py-2 px-2 text-right">
+                    <td className="py-2 px-2 text-right font-mono">
                       {post.replies.toLocaleString()}
                     </td>
-                    <td className="py-2 px-2 text-right">
+                    <td className="py-2 px-2 text-right font-mono">
                       {post.reposts.toLocaleString()}
                     </td>
                     <td className="py-2 pl-2 text-right whitespace-nowrap text-muted-foreground">
@@ -265,7 +262,7 @@ function ThreadsAnalytics({ data }: { data: ThreadsAnalyticsData | null }) {
 function SubstackAnalytics({ data }: { data: SubstackAnalyticsData | null }) {
   if (!data || data.posts.length === 0) {
     return (
-      <Card>
+      <Card className="rounded-[20px]">
         <CardContent className="py-12 text-center">
           <p className="text-muted-foreground">
             No Substack analytics yet. Add your publication subdomain in
@@ -278,21 +275,16 @@ function SubstackAnalytics({ data }: { data: SubstackAnalyticsData | null }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {data.subscriber && (
-          <StatCard
-            title="Subscribers"
-            value={data.subscriber.total}
-          />
+          <StatCard title="Subscribers" value={data.subscriber.total} />
         )}
         <StatCard title="Total Reactions" value={data.summary.totalReactions} />
         <StatCard title="Total Comments" value={data.summary.totalComments} />
         <StatCard title="Total Restacks" value={data.summary.totalRestacks} />
       </div>
 
-      {/* Post performance table */}
-      <Card>
+      <Card className="rounded-[20px]">
         <CardHeader>
           <CardTitle className="text-sm font-medium">
             Post Performance ({data.summary.postCount} posts)
@@ -306,13 +298,13 @@ function SubstackAnalytics({ data }: { data: SubstackAnalyticsData | null }) {
                   <th className="pb-2 pr-4 font-medium text-muted-foreground">
                     Title
                   </th>
-                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right">
+                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right font-mono">
                     Reactions
                   </th>
-                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right">
+                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right font-mono">
                     Comments
                   </th>
-                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right">
+                  <th className="pb-2 px-2 font-medium text-muted-foreground text-right font-mono">
                     Restacks
                   </th>
                   <th className="pb-2 pl-2 font-medium text-muted-foreground text-right">
@@ -324,17 +316,15 @@ function SubstackAnalytics({ data }: { data: SubstackAnalyticsData | null }) {
                 {data.posts.map((post) => (
                   <tr key={post.postId} className="border-b last:border-0">
                     <td className="py-2 pr-4 max-w-[250px] truncate">
-                      {post.title
-                        ? truncate(post.title, 60)
-                        : "Untitled"}
+                      {post.title ? truncate(post.title, 60) : "Untitled"}
                     </td>
-                    <td className="py-2 px-2 text-right">
+                    <td className="py-2 px-2 text-right font-mono">
                       {post.reactions.toLocaleString()}
                     </td>
-                    <td className="py-2 px-2 text-right">
+                    <td className="py-2 px-2 text-right font-mono">
                       {post.comments.toLocaleString()}
                     </td>
-                    <td className="py-2 px-2 text-right">
+                    <td className="py-2 px-2 text-right font-mono">
                       {post.restacks.toLocaleString()}
                     </td>
                     <td className="py-2 pl-2 text-right whitespace-nowrap text-muted-foreground">
@@ -361,7 +351,6 @@ export default function AnalyticsPage() {
   const [substackData, setSubstackData] =
     useState<SubstackAnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     Promise.all([
@@ -377,45 +366,45 @@ export default function AnalyticsPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold">Analytics</h1>
-        <Button variant="ghost" size="sm" onClick={() => router.push("/")}>
-          Back to Dashboard
-        </Button>
-      </div>
+    <div>
+      <PageHeader
+        title="Analytics"
+        subtitle="Track performance across your connected platforms"
+      />
 
-      {/* Tab navigation */}
-      <div className="flex items-center gap-2 mb-6">
-        <TabButton
-          active={activeTab === "threads"}
-          onClick={() => setActiveTab("threads")}
-        >
-          <span className="flex items-center gap-1.5">
-            <ThreadsIcon className="h-4 w-4" />
-            Threads
-          </span>
-        </TabButton>
-        <TabButton
-          active={activeTab === "substack"}
-          onClick={() => setActiveTab("substack")}
-        >
-          <span className="flex items-center gap-1.5">
-            <SubstackIcon className="h-4 w-4" />
-            Substack
-          </span>
-        </TabButton>
-      </div>
+      <div className="px-8 pb-8">
+        {/* Tab navigation - pill style */}
+        <div className="flex items-center gap-2 mb-6">
+          <TabButton
+            active={activeTab === "threads"}
+            onClick={() => setActiveTab("threads")}
+          >
+            <span className="flex items-center gap-1.5">
+              <ThreadsIcon className="h-4 w-4" />
+              Threads
+            </span>
+          </TabButton>
+          <TabButton
+            active={activeTab === "substack"}
+            onClick={() => setActiveTab("substack")}
+          >
+            <span className="flex items-center gap-1.5">
+              <SubstackIcon className="h-4 w-4" />
+              Substack
+            </span>
+          </TabButton>
+        </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground text-center">
-          Loading analytics...
-        </p>
-      ) : activeTab === "threads" ? (
-        <ThreadsAnalytics data={threadsData} />
-      ) : (
-        <SubstackAnalytics data={substackData} />
-      )}
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground text-center">
+            Loading analytics...
+          </p>
+        ) : activeTab === "threads" ? (
+          <ThreadsAnalytics data={threadsData} />
+        ) : (
+          <SubstackAnalytics data={substackData} />
+        )}
+      </div>
     </div>
   );
 }

@@ -31,8 +31,7 @@ export async function middleware(request: NextRequest) {
 
   // Public pages that don't require auth
   const isPublicPage =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/privacy");
+    request.nextUrl.pathname.startsWith("/login");
 
   // Redirect unauthenticated users to login (except public pages)
   if (!user && !isPublicPage) {

@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { ComposeForm } from "@/components/compose-form";
 import { NotesList } from "@/components/notes-list";
-import { CalendarView } from "@/components/calendar-view";
-import { SessionStatus } from "@/components/session-status";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/page-header";
 import type { ScheduledNote, Platform, ThreadsInsight } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -17,8 +12,6 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [connectedPlatforms, setConnectedPlatforms] = useState<Platform[]>([]);
   const [threadsInsights, setThreadsInsights] = useState<Record<string, ThreadsInsight>>({});
-  const router = useRouter();
-  const supabase = createClient();
 
   const loadNotes = useCallback(async () => {
     const res = await fetch("/api/notes");
@@ -29,29 +22,23 @@ export default function DashboardPage() {
     setIsLoading(false);
   }, []);
 
-  // Load platform connection statuses
   const loadPlatformStatus = useCallback(async () => {
     const platforms: Platform[] = [];
-
     const [sessionRes, threadsRes] = await Promise.all([
       fetch("/api/session"),
       fetch("/api/auth/threads/status"),
     ]);
-
     if (sessionRes.ok) {
       const data = await sessionRes.json();
       if (data.hasSession) platforms.push("substack");
     }
-
     if (threadsRes.ok) {
       const data = await threadsRes.json();
       if (data.connected) platforms.push("threads");
     }
-
     setConnectedPlatforms(platforms);
   }, []);
 
-  // Load Threads insights for inline stats in notes list
   const loadInsights = useCallback(async () => {
     const res = await fetch("/api/analytics/threads");
     if (res.ok) {
@@ -107,67 +94,69 @@ export default function DashboardPage() {
     loadNotes();
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
+  // Stats
+  const pendingCount = notes.filter((n) => n.status === "pending").length;
+  const deliveredCount = notes.filter((n) => n.status === "delivered").length;
+  const platformCount = connectedPlatforms.length;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-xl font-semibold">PostQueue</h1>
-        <div className="flex items-center gap-3">
-          <SessionStatus />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/analytics")}
-          >
-            Analytics
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            Logout
-          </Button>
+    <div>
+      <PageHeader
+        title="Scheduled Posts"
+        subtitle="Create, manage, and track your scheduled social posts"
+      />
+
+      <div className="px-8 pb-8">
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="bg-card rounded-[20px] border border-border p-5">
+            <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              Scheduled
+            </p>
+            <p className="font-mono text-2xl font-medium mt-1">{pendingCount}</p>
+          </div>
+          <div className="bg-card rounded-[20px] border border-border p-5">
+            <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              Delivered
+            </p>
+            <p className="font-mono text-2xl font-medium mt-1">{deliveredCount}</p>
+          </div>
+          <div className="bg-card rounded-[20px] border border-border p-5">
+            <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              Connected
+            </p>
+            <p className="font-mono text-2xl font-medium mt-1">{platformCount}</p>
+          </div>
         </div>
-      </div>
 
-      <div className="mb-8">
-        <ComposeForm
-          key={editingNote?.id ?? "new"}
-          onNoteCreated={handleNoteCreatedOrUpdated}
-          onNoteUpdated={handleNoteCreatedOrUpdated}
-          editingNote={editingNote}
-          onCancelEdit={handleCancelEdit}
-          connectedPlatforms={connectedPlatforms}
-        />
-      </div>
+        {/* Compose form */}
+        <div className="mb-8">
+          <ComposeForm
+            key={editingNote?.id ?? "new"}
+            onNoteCreated={handleNoteCreatedOrUpdated}
+            onNoteUpdated={handleNoteCreatedOrUpdated}
+            editingNote={editingNote}
+            onCancelEdit={handleCancelEdit}
+            connectedPlatforms={connectedPlatforms}
+          />
+        </div>
 
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground text-center">
-          Loading notes...
-        </p>
-      ) : (
-        <Tabs defaultValue="list">
-          <TabsList className="mb-4">
-            <TabsTrigger value="list">List</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-          </TabsList>
-          <TabsContent value="list">
-            <NotesList
-              notes={notes}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onRetry={handleRetry}
-              editingNoteId={editingNote?.id ?? null}
-              threadsInsights={threadsInsights}
-            />
-          </TabsContent>
-          <TabsContent value="calendar">
-            <CalendarView notes={notes} onEdit={handleEdit} />
-          </TabsContent>
-        </Tabs>
-      )}
+        {/* Notes list */}
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground text-center">
+            Loading notes...
+          </p>
+        ) : (
+          <NotesList
+            notes={notes}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onRetry={handleRetry}
+            editingNoteId={editingNote?.id ?? null}
+            threadsInsights={threadsInsights}
+          />
+        )}
+      </div>
     </div>
   );
 }

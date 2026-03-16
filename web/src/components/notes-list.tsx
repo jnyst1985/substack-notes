@@ -45,7 +45,6 @@ function PlatformBadge({ platform }: { platform: Platform }) {
   );
 }
 
-/** Group notes by group_id for cross-post display */
 function groupNotes(notes: ScheduledNote[]): (ScheduledNote | ScheduledNote[])[] {
   const grouped: (ScheduledNote | ScheduledNote[])[] = [];
   const seenGroupIds = new Set<string>();
@@ -61,6 +60,28 @@ function groupNotes(notes: ScheduledNote[]): (ScheduledNote | ScheduledNote[])[]
     }
   }
   return grouped;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const variant =
+    status === "delivered"
+      ? "default"
+      : status === "failed"
+      ? "destructive"
+      : "outline";
+
+  return (
+    <Badge
+      variant={variant}
+      className={
+        status === "pending"
+          ? "border-primary text-primary"
+          : ""
+      }
+    >
+      {status}
+    </Badge>
+  );
 }
 
 function NoteCard({
@@ -80,17 +101,20 @@ function NoteCard({
   insight?: ThreadsInsight;
   isGrouped?: boolean;
 }) {
+  const isEditing = editingNoteId === note.id;
+
   return (
     <div
-      className={`flex items-center gap-3 py-3 ${
-        editingNoteId === note.id
-          ? "bg-muted rounded-lg px-3 -mx-3 ring-1 ring-ring"
+      className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
+        isEditing
+          ? "bg-[#7C908215] ring-1 ring-primary"
           : ""
-      } ${isGrouped ? "pl-4 border-l-2 border-muted" : ""}`}
+      } ${isGrouped ? "ml-3 border-l-2 border-primary pl-3" : ""}`}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <PlatformBadge platform={note.platform} />
+          <StatusBadge status={note.status} />
         </div>
         <p className="text-sm truncate">
           {truncate(extractPlainText(note.content).split("\n")[0], 60)}
@@ -98,9 +122,8 @@ function NoteCard({
         <p className="text-xs text-muted-foreground">
           {formatDate(note.scheduled_time)}
         </p>
-        {/* Inline Threads stats for delivered notes */}
         {insight && note.status === "delivered" && (
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5 font-mono">
             {insight.views} views · {insight.likes} likes
           </p>
         )}
@@ -159,15 +182,16 @@ export function NotesList({
       {pending.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-sm font-semibold">Upcoming</h2>
-            <Badge variant="secondary">{pending.length}</Badge>
+            <h2 className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
+              Upcoming
+            </h2>
+            <Badge variant="secondary" className="font-mono">{pending.length}</Badge>
           </div>
-          <div className="flex flex-col divide-y">
+          <div className="flex flex-col gap-2">
             {groupedPending.map((item) => {
               if (Array.isArray(item)) {
-                // Cross-post group
                 return (
-                  <div key={item[0].group_id} className="py-1">
+                  <div key={item[0].group_id}>
                     <p className="text-xs text-muted-foreground mb-1 font-medium">Cross-post</p>
                     {item.map((note) => (
                       <NoteCard
@@ -200,12 +224,12 @@ export function NotesList({
 
       {failed.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-destructive mb-3">
+          <h2 className="text-xs font-medium tracking-wider text-destructive uppercase mb-3">
             Failed
           </h2>
-          <div className="flex flex-col divide-y">
+          <div className="flex flex-col gap-2">
             {failed.map((note) => (
-              <div key={note.id} className="flex items-center gap-3 py-3">
+              <div key={note.id} className="flex items-center gap-3 p-3 rounded-xl">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <PlatformBadge platform={note.platform} />
@@ -230,22 +254,22 @@ export function NotesList({
 
       {delivered.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-muted-foreground mb-3">
+          <h2 className="text-xs font-medium tracking-wider text-muted-foreground uppercase mb-3">
             Recently Posted
           </h2>
-          <div className="flex flex-col divide-y">
+          <div className="flex flex-col gap-2">
             {groupedDelivered.slice(0, 5).map((item) => {
               if (Array.isArray(item)) {
                 return (
-                  <div key={item[0].group_id} className="py-1">
+                  <div key={item[0].group_id}>
                     {item.map((note) => (
-                      <div key={note.id} className="flex items-center gap-2 py-1 pl-4 border-l-2 border-muted">
+                      <div key={note.id} className="flex items-center gap-2 py-2 ml-3 border-l-2 border-muted pl-3">
                         <PlatformBadge platform={note.platform} />
                         <p className="text-xs text-muted-foreground flex-1 truncate">
                           {truncate(extractPlainText(note.content).split("\n")[0], 40)}
                         </p>
                         {threadsInsights[note.id] && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground font-mono">
                             {threadsInsights[note.id].views} views · {threadsInsights[note.id].likes} likes
                           </span>
                         )}
@@ -258,13 +282,13 @@ export function NotesList({
                 );
               }
               return (
-                <div key={item.id} className="flex items-center gap-2 py-2">
+                <div key={item.id} className="flex items-center gap-2 p-2 rounded-xl">
                   <PlatformBadge platform={item.platform} />
                   <p className="text-xs text-muted-foreground flex-1 truncate">
                     {truncate(extractPlainText(item.content).split("\n")[0], 40)}
                   </p>
                   {threadsInsights[item.id] && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground font-mono">
                       {threadsInsights[item.id].views} views · {threadsInsights[item.id].likes} likes
                     </span>
                   )}
