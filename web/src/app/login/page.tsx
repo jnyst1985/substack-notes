@@ -32,8 +32,9 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
-    router.refresh();
+    // Full page navigation ensures auth cookies are sent with the request,
+    // avoiding a race where middleware redirects back to /login
+    window.location.href = "/";
   }
 
   return (
