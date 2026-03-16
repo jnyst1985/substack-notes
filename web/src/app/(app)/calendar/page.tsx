@@ -7,7 +7,7 @@ import { extractPlainText } from "@/components/rich-editor";
 import { SubstackIcon } from "@/components/icons/substack-icon";
 import { ThreadsIcon } from "@/components/icons/threads-icon";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { ScheduledNote } from "@/lib/types";
+import type { Platform, ScheduledNote } from "@/lib/types";
 
 function formatTime(isoString: string): string {
   return new Date(isoString).toLocaleTimeString(undefined, {
@@ -80,6 +80,12 @@ export default function CalendarPage() {
     return notesByDate.has(key);
   }
 
+  function getPlatformsForDay(day: number): Platform[] {
+    const key = `${year}-${month}-${day}`;
+    const dayNotes = notesByDate.get(key) ?? [];
+    return [...new Set(dayNotes.map((n) => n.platform))];
+  }
+
   function prevMonth() {
     setCurrentMonth(new Date(year, month - 1, 1));
   }
@@ -113,9 +119,9 @@ export default function CalendarPage() {
             Loading...
           </p>
         ) : (
-          <>
+          <div className="lg:grid lg:grid-cols-2 lg:gap-6">
             {/* Month grid */}
-            <div className="bg-card rounded-[20px] border border-border p-6 mb-6">
+            <div className="bg-card rounded-[20px] border border-border p-6 mb-6 lg:mb-0 max-w-2xl">
               {/* Month navigation */}
               <div className="flex items-center justify-between mb-4">
                 <button
@@ -140,7 +146,7 @@ export default function CalendarPage() {
                 {WEEKDAYS.map((day) => (
                   <div
                     key={day}
-                    className="text-center text-xs font-medium text-muted-foreground py-2"
+                    className="text-center text-xs font-medium text-muted-foreground py-1"
                   >
                     {day}
                   </div>
@@ -151,19 +157,19 @@ export default function CalendarPage() {
               <div className="grid grid-cols-7 gap-1">
                 {cells.map((day, i) => {
                   if (day === null) {
-                    return <div key={`empty-${i}`} className="aspect-square" />;
+                    return <div key={`empty-${i}`} className="h-10" />;
                   }
 
                   const date = new Date(year, month, day);
                   const isSelected = isSameDay(date, selectedDate);
                   const isToday = isSameDay(date, new Date());
-                  const dayHasNotes = hasNotes(day);
+                  const platforms = getPlatformsForDay(day);
 
                   return (
                     <button
                       key={day}
                       onClick={() => setSelectedDate(date)}
-                      className={`aspect-square flex flex-col items-center justify-center rounded-lg text-sm transition-colors relative ${
+                      className={`h-10 flex flex-col items-center justify-center rounded-lg text-sm transition-colors ${
                         isSelected
                           ? "bg-primary text-primary-foreground"
                           : isToday
@@ -171,13 +177,31 @@ export default function CalendarPage() {
                           : "hover:bg-secondary"
                       }`}
                     >
-                      {day}
-                      {dayHasNotes && (
-                        <span
-                          className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${
-                            isSelected ? "bg-primary-foreground" : "bg-primary"
-                          }`}
-                        />
+                      <span className="leading-none">{day}</span>
+                      {platforms.length > 0 && (
+                        <span className="flex gap-0.5 mt-0.5">
+                          {platforms.map((p) =>
+                            p === "substack" ? (
+                              <SubstackIcon
+                                key={p}
+                                className={`h-2.5 w-2.5 ${
+                                  isSelected
+                                    ? "text-primary-foreground"
+                                    : "text-primary"
+                                }`}
+                              />
+                            ) : (
+                              <ThreadsIcon
+                                key={p}
+                                className={`h-2.5 w-2.5 ${
+                                  isSelected
+                                    ? "text-primary-foreground"
+                                    : "text-primary"
+                                }`}
+                              />
+                            )
+                          )}
+                        </span>
                       )}
                     </button>
                   );
@@ -233,7 +257,7 @@ export default function CalendarPage() {
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
